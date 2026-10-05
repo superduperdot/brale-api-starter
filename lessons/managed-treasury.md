@@ -32,7 +32,7 @@ Field notes for business onboarding, a single preferred balance, and settlement.
 
 ### Passwords for a small, invited user base
 
-- **Do this instead:** 6-digit codes from `crypto.getRandomValues()`, 10-minute TTL, single use, constant-time compare, at most 3 sends per email per 10 minutes. The same flow covers login and signup.
+- **Do this instead:** 6-digit codes from `crypto.getRandomValues()`, 10-minute TTL, single use, constant-time compare, at most 3 sends per email per 10 minutes — **and cap verification attempts** (burn the code after ~5 wrong guesses, rate-limit the verify endpoint). Throttling sends alone leaves a 6-digit code brute-forceable. Prefer storing a hash of the code. The same flow covers login and signup.
 - **Guide:** [Security — email codes](../guide/security.md)
 
 ### Opaque ids in support tickets

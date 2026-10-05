@@ -47,5 +47,5 @@ Field notes for a self-hosted dashboard over Brale. Architecture: [concepts.md](
 
 ### No record of who did what
 
-- **Do this instead:** Append-only audit log for API calls and user actions, formatted with Value Layer labels.
+- **Do this instead:** Append-only audit log for API calls and user actions, formatted with Value Layer labels. Run every entry through the same log redaction so request/response bodies do not turn the audit table into a PII or secrets store.
 - **Guide:** [Value Layer](../guide/value-layer.md), [Security](../guide/security.md)
