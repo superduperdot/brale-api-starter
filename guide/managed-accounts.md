@@ -12,8 +12,8 @@ Signup → testnet activation → mainnet KYB (when you need live money) → liv
 
 | Phase | What you do | Brale | What you store |
 |-------|-------------|-------|----------------|
-| Signup | Create your org, user, and wallet rows. Open a managed account with sandbox credentials. | Create account (test application) | No KYB fields |
-| Testnet activation | Create the managed account with a sandbox business profile so it can transact in test. | Create account with sandbox KYC/KYB details | Sandbox data only, if you store anything |
+| Signup | Create your org, user, and wallet rows. Open a managed account with testnet credentials. | Create account (testnet application) | No KYB fields |
+| Testnet activation | Create the managed account with a testnet business profile so it can transact in test. | Create account with testnet KYC/KYB details | Testnet data only, if you store anything |
 | Mainnet KYB | Collect real identity data and forward it on account creation (and as staged documents). | Create account with live details; stage and link verification documents | **Nothing.** Transit only. |
 | Documents | Stage a verification document, then link it to the account, when Brale asks for more. | Stage verification document → link verification documents | **Nothing.** Transit only. |
 | Live operations | Transfers, deposits, sweeps | Orchestration API | Operational rows only |
@@ -32,7 +32,7 @@ EIN, SSN, date of birth, beneficial owners, and controller data are collected in
 Compensating controls that have to exist together:
 
 - Signup itself collects no KYB data.
-- Testnet activation uses sandbox values.
+- Testnet activation uses testnet values (Brale's term; do not call it "sandbox").
 - Mainnet activation requires an authenticated session and an already-active testnet account.
 - The redaction regex runs on every log call, not only on the KYB route.
 

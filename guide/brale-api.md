@@ -66,10 +66,13 @@ Create a transfer under an account. Send an `Idempotency-Key` on **every** `POST
 
 **Rules**
 
-- `source` must be an internal (custodial) address. External addresses are destination-only.
-- `amount.currency` is always `"USD"` (the unit of account). `amount.value` is a decimal string. Keep it a string end to end. See [value-layer.md](value-layer.md).
+- `source` must be an internal (custodial) address. External addresses are destination-only. (Only internal and Plaid-linked addresses expose balances.)
+- Top-level shape is exactly `amount`, `source`, `destination`. Everything is `snake_case` — `value_type` and `transfer_type`, never camelCase. Canonical JSON: [value-layer.md](value-layer.md#canonical-transfer-shape).
+- `amount.value` is a decimal string. `amount.currency` is an ISO-4217 code (usually `USD`) and is **separate from `value_type`** — a `MXNe` leg is denominated in MXN, not USD. Keep the value a string end to end.
+- `value_type` and `transfer_type` are case-sensitive ids from Coverage: fiat value types are lowercase (`usd`, `mxn`), onchain tokens use their ticker (`SBC`, `USDC`, `MXNe`), rails are lowercase (`wire`, `base`). Use testnet rail ids (`base_sepolia`, `solana_devnet`) on testnet.
 - A balance query needs both dimensions: `?transfer_type=base&value_type=SBC`. One without the other is not a balance.
 - The API does not enumerate valid `(value_type, transfer_type)` pairs for an address. Probe the combinations you support and skip errors. Reference: [reference/balance-discovery.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/balance-discovery.ts).
+- List endpoints paginate with `page[size]` (1–100), `page[next]`, and `page[prev]` cursors from the response `pagination` object. Send at most one of next/prev.
 
 ### Intent-first writes
 
@@ -130,10 +133,11 @@ See the official [troubleshooting page](https://docs.brale.xyz/documentation/tro
 | What you will see | What to do |
 |-------------------|------------|
 | `GET` accounts returns objects **or** bare id strings | Parse both. Do not assume an envelope. |
-| IDs are not one format (transfers are UUIDs; other resources use KSUIDs) | Do not write one id parser for everything. |
+| IDs look parseable | They are KSUIDs (account, address, transfer, automation alike). Treat them as opaque strings — do not parse, validate by length, or assume UUIDs. |
 | `sharedSecret` is Base64URL and shown once | Decode before HMAC. Persist it encrypted at creation. |
 | Status strings `complete` and `completed` both appear | Accept both. |
-| Value types are case-sensitive (`SBC`, `cfUSD`) | Drive them from the registry. Do not hardcode a second spelling. |
+| Value types are case-sensitive, and some collide (`CFUSD` vs `cFtUSD`, `usd` vs `USDC`) | Copy the exact id from Coverage. Do not hardcode a second spelling. |
+| “sandbox” vs “testnet” | Brale calls the non-production environment **testnet**, never “sandbox.” |
 | Errors follow a structured envelope | Surface the `detail` / message. “Request failed” is not operable. |
 | Webhook routes return `401 invalid_signature` | Usually the wrong subscription secret, a parsed body, or a stale env. |
 | Fiat legs have no transaction hash; cross-chain legs may have two (burn and mint) | Render 0, 1, or 2 hashes from the payload. Do not invent one. |

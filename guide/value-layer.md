@@ -1,18 +1,51 @@
 # Value Layer
 
-Three primitives describe every movement of value. Use them in code even when the UI uses plainer words.
+Three primitives describe every movement of value. Use them in code even when the UI uses plainer words. This is not Brale-specific theory — it is the design the Brale API is built on, so understanding it makes the API obvious instead of surprising.
 
-Essays: [The Value Layer](https://benmilne.com/book/the-value-layer).
+Field guide: [The Value Layer](https://benmilne.com/book/the-value-layer) (Ben Milne, 2026) — the grammar of `ValueType`, `TransferType`, and `Exchange`.
 
 ## Primitives
 
-| Primitive | Meaning | Example |
-|-----------|---------|---------|
-| **ValueType** | What moves | `USD`, `USDC`, `SBC` |
-| **TransferType** | How it moves | `wire`, `ach_credit`, `base`, `solana` |
-| **Exchange** | A conversion between two pairs | USD Wire → USDC Solana |
+| Primitive | Meaning | Example | Brale API field |
+|-----------|---------|---------|-----------------|
+| **ValueType** | What moves | `USDC`, `SBC`, `usd` | `value_type` |
+| **TransferType** | How it moves | `wire`, `ach_credit`, `base`, `solana` | `transfer_type` |
+| **Exchange** | A conversion between two pairs | USD Wire → USDC Solana | implied by source ≠ destination |
 
-The issuer sits inside the value type. SBC is Brale-issued. The Brale API uses the same model: `value_type` and `transfer_type` on each side, `address_id` as the endpoint, and `amount.currency` always `"USD"` (the unit of account, not the asset).
+The issuer sits inside the value type (SBC is Brale-issued; USDC is Circle's). The whole API is this model: a transfer carries a `value_type` and a `transfer_type` on each of `source` and `destination`, each leg points at an `address_id`, and the operation (onramp, offramp, swap, payout) is whatever the two endpoints imply. There is no `/swap` or `/onramp` endpoint.
+
+## The two fields in the Brale API
+
+The grammar maps directly onto two case-sensitive fields. Both are `snake_case`. There is no `valueType`/`transferType` camelCase anywhere in the API.
+
+| | `value_type` | `transfer_type` |
+|--|--------------|-----------------|
+| Answers | What is it | What rail / chain |
+| Onchain examples | `SBC`, `USDC`, `USDT`, `MXNe`, `RLUSD` (canonical tickers, mixed case) | `base`, `solana`, `ethereum`, `canton`, `tron`, `polygon` |
+| Offchain examples | `usd`, `mxn` (fiat, **lowercase**) | `wire`, `ach_debit`, `ach_credit`, `same_day_ach_credit`, `rtp_credit` |
+| Testnet | same ids | testnet rails: `base_sepolia`, `solana_devnet`, `sepolia`, `canton_testnet` |
+| Rule | Copy the exact id from Coverage. Never hardcode a second spelling. | Lowercase chain/rail id. Use the testnet variant on testnet. |
+
+Casing is a real trap: fiat value types are lowercase (`usd`), onchain tokens use their published ticker (`SBC`, `MXNe`, `cFtUSD` vs `CFUSD` are different ids). Treat the Coverage pages as the source of truth, not a display name:
+
+- [Value Types](https://docs.brale.xyz/coverage/value-types.md) — ~40 stablecoins plus `usd`/`mxn`
+- [Transfer Types](https://docs.brale.xyz/coverage/transfer-types.md) — chains, fiat rails, and testnet variants
+
+Not every value type runs on every transfer type. USDC is on ~10 chains; USDT is Ethereum, Solana, Tron. Supported pairs for Brale-issued stablecoins are set during onboarding. The API will not enumerate the valid pairs for you — probe and skip errors (see [brale-api.md](brale-api.md)).
+
+### Canonical transfer shape
+
+`amount`, `source`, `destination`. No wrappers, no camelCase. `SBC` is Brale's placeholder stablecoin in docs — swap in yours.
+
+```json
+{
+  "amount": { "value": "100", "currency": "USD" },
+  "source":      { "value_type": "usd", "transfer_type": "wire" },
+  "destination": { "address_id": "2VcUIonJeVQzFoBuC7LdFT0dRe4", "value_type": "SBC", "transfer_type": "solana" }
+}
+```
+
+`amount.currency` is an ISO-4217 code (usually `USD`), and it is **separate from `value_type`** — a USD-denominated stablecoin moves with `currency: "USD"`, while a `MXNe` leg is denominated in MXN. `amount.value` is a decimal string. `address_id` is omitted on a leg only when Brale returns deposit instructions for funding (for example a wire onramp source).
 
 ## Two audiences, two word lists
 
