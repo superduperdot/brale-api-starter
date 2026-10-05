@@ -171,6 +171,22 @@ Treat a zero-row update as “code already used”. Do not check and then update
 
 Parity gaps to remember: inbound Brale **webhooks can't reach `localhost`** — use a tunnel (e.g. `cloudflared`) or replay a captured signed payload, and verify the signature either way. Apply D1 migrations to *both* local state directories (wrangler CLI and the Vite plugin) or a migration will look like it "did nothing."
 
+**Replaying a signed webhook locally.** Don't disable verification to test the handler — sign the replay with the same secret so the same code path runs. Compute the signature the way the receiver does (HMAC-SHA256 over the raw body, key = Base64URL-decoded subscription `sharedSecret`), then POST it to your local Worker:
+
+```bash
+BODY="$(cat captured-event.json)"
+SIG="$(printf '%s' "$BODY" \
+  | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(printf '%s' "$SHARED_SECRET_B64URL" \
+      | tr '_-' '/+' | base64 -d | xxd -p -c256)" -binary \
+  | base64)"
+curl -sS -X POST http://localhost:8788/webhooks/brale \
+  -H 'Content-Type: application/json' \
+  -H "x-request-signature-sha-256: $SIG" \
+  --data-binary "$BODY"
+```
+
+Keep the signing logic in one place by reusing the kit's [reference/webhook-verify.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/webhook-verify.ts) (a small Node script that signs a fixture is enough). See [brale-api.md](brale-api.md#webhooks) for the verification contract and [security.md](security.md) for the constant-time compare.
+
 ## Gotchas
 
 | What breaks | Fix |
