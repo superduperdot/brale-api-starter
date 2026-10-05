@@ -1,0 +1,62 @@
+name: Correction or pitfall
+description: Something in the playbook is wrong, out of date, or missing a sharp edge.
+title: "[correction] "
+labels: ["correction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a page makes a claim that is inaccurate, stale, or incomplete.
+        The bar for a correction is **evidence**: an official doc, a live response, or the OpenAPI spec. "I think" is not enough — we burned real time on carried-over claims that turned out to be false.
+  - type: input
+    id: location
+    attributes:
+      label: Where
+      description: File and section, e.g. `guide/brale-api.md` → Webhooks.
+      placeholder: guide/brale-api.md → Pitfalls
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: What it says now
+      description: Quote the current line or table row.
+    validations:
+      required: true
+  - type: textarea
+    id: reality
+    attributes:
+      label: What is actually true
+      description: The corrected statement, in the same voice (imperative, specific).
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: |
+        Required. One or more of:
+        - A link to docs.brale.xyz (or the exact coverage/reference page)
+        - A live request and its response (curl output, status code, body)
+        - The OpenAPI spec (api.brale.xyz/openapi or brale.network/api/openapi.json)
+      placeholder: |
+        curl -s https://brale.network/api/price/sbc  →  200  {"data":{"value_type":"SBC",...}}
+    validations:
+      required: true
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Architecture affected
+      description: Which section(s) in guide/concepts.md this touches.
+      multiple: true
+      options:
+        - All / general
+        - Self-custody wallet
+        - Agent wallet
+        - Par settlement
+        - Analytics command center
+        - Operations dashboard
+        - Compliance monitoring
+        - Managed treasury
+    validations:
+      required: true

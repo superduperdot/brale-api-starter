@@ -1,0 +1,52 @@
+name: New pattern or lesson
+description: A pattern, pitfall, or architecture that saved (or cost) you real time and should be in the playbook.
+title: "[pattern] "
+labels: ["pattern"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This playbook is patterns, not opinions. A good entry names a **concrete failure** or a **concrete shape** — "split the API Worker from the processor because queue consumers spiked latency," not "keep services decoupled."
+  - type: textarea
+    id: failure
+    attributes:
+      label: What happened
+      description: The problem, the surprise, or the wrong turn — concretely.
+    validations:
+      required: true
+  - type: textarea
+    id: pattern
+    attributes:
+      label: What to do instead
+      description: The recommended shape or rule. Specific enough to act on.
+    validations:
+      required: true
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Which architecture
+      description: The closest job in guide/concepts.md. Pick "New architecture" only if none fit.
+      options:
+        - Self-custody wallet
+        - Agent wallet
+        - Par settlement
+        - Analytics command center
+        - Operations dashboard
+        - Compliance monitoring
+        - Managed treasury
+        - New architecture (explain below)
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or where this is used
+      description: A Brale doc, a live response, an OpenAPI shape, or a description of the system where this held up. Keep private repo names out of it — describe the shape and the failure, not the codebase.
+    validations:
+      required: true
+  - type: input
+    id: pages
+    attributes:
+      label: Pages this touches
+      description: Which guide/ page and which lessons/ file should change.
+      placeholder: guide/cloudflare-stack.md + lessons/compliance.md

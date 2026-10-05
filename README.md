@@ -93,6 +93,17 @@ Copy from [templates/](templates/) when starting an app:
 - [CONTRIBUTING.md](templates/CONTRIBUTING.md) — setup and pull requests
 - [SECURITY.md](templates/SECURITY.md) — vulnerability reporting
 
+## Feedback and contributions
+
+This playbook gets better every time someone hits a wrong turn and writes it down.
+
+- **Found something wrong or stale?** Open a [Correction or pitfall issue](../../issues/new?template=correction.yml). It asks for evidence — a [docs.brale.xyz](https://docs.brale.xyz) link, a live response, or the OpenAPI spec — because that is what keeps the pages trustworthy.
+- **Have a pattern worth sharing?** Open a [New pattern or lesson issue](../../issues/new?template=new-pattern.yml).
+- **Just a question?** Use [Discussions](../../discussions).
+- **Ready to edit?** Open a pull request; the template has the checklist.
+
+Everyone — and every agent — is held to the same bar: a concrete failure or a verified source, never "I think." See [CONTRIBUTING.md](CONTRIBUTING.md), including the **For LLMs and agents** section, and the editing rules in [AGENTS.md](AGENTS.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Brale API documentation
+    url: https://docs.brale.xyz
+    about: Check the official docs first — many questions are answered there, and corrections should cite them.
+  - name: Brale Network API (registry + prices)
+    url: https://brale.network/api
+    about: The open registry of value types, transfer types, and prices. Verify endpoint shapes here before reporting one.
+  - name: Ask a question (Discussions)
+    url: https://github.com/brale-commons/brale-api-starter/discussions
+    about: Open-ended questions and "is this the right pattern?" belong in Discussions, not Issues.
