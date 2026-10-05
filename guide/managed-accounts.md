@@ -4,6 +4,39 @@ Onboard a business onto a Brale managed account and operate it after KYB. Read [
 
 Architecture context: [concepts.md](concepts.md#managed-treasury).
 
+## What a managed account is
+
+A **managed account** is a verified customer account your platform creates and operates through Brale, identified by its own `account_id`. It is not a wallet — a *custodial* managed account *has* one or more internal wallet addresses. You own the product and the customer relationship; Brale runs verification, custody, and compliance. ([Brale docs](https://docs.brale.xyz/guides/managed-accounts.md).)
+
+Reach for managed accounts when you are onboarding **other people or businesses** onto stablecoin rails (a treasury product, a payouts platform, a neobank) rather than just moving your own funds. If you only operate your own balance, you need your own account, not managed accounts.
+
+## Account types
+
+`POST /accounts` takes three optional discriminator fields. Omit all three and you get today's default: a KYB business, custodial, standard verification.
+
+| Field | Values | Default | Decides |
+|-------|--------|---------|---------|
+| `entity_type` | `business`, `individual` | `business` | KYB vs KYC |
+| `account_type` | `custodial`, `transactional` | `custodial` | Brale holds a balance vs self-custody destination only |
+| `verification_mode` | `standard`, `reliance` | `standard` | `reliance` is not self-serve; Brale enables it per managing account |
+
+The split that matters most:
+
+| Model | Has internal wallets & balances | Can originate on-chain transfers | Use it for |
+|-------|-------------------------------|----------------------------------|------------|
+| **Custodial** (business or individual) | Yes — Brale-managed addresses on supported chains | Yes | A customer who holds a Brale-custodied balance and sends/receives |
+| **Transactional** (business or individual) | No | No — external destinations are destination-only | A customer who receives value on-chain to their *own* self-custody address, with no Brale-held balance |
+
+An unsupported combination returns `422 unsupported_account_combination`; the rejection is permanent, so it is safe to cache against the idempotency key. `verification_mode: "bypass"` is never supported. Before `POST /accounts`, your onboarding flow must present the current Brale End User Agreement and capture consent — see the [Accounts resource](https://docs.brale.xyz/key-concepts/accounts.md) and [Legal](#legal).
+
+Which to build:
+
+- **Business custodial** — a business that holds a Brale-custodied balance and uses Brale as its record of funds. The default. This is the [managed treasury](concepts.md#managed-treasury) shape.
+- **Individual custodial** — a person who holds a Brale-custodied balance. U.S.-only, narrower state list.
+- **Business / individual transactional** — KYB/KYC-verified but non-custodial: register external self-custody destinations (e.g. the on-ramp target in a [self-custody wallet](concepts.md#self-custody-wallet) product). No Brale balance, no origination.
+
+Availability depends on entity type, account type, and jurisdiction — see [Account availability](https://docs.brale.xyz/coverage/account-availability.md).
+
 ## Onboarding
 
 ```

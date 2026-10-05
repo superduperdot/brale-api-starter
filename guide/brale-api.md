@@ -78,6 +78,24 @@ Create a transfer under an account. Send an `Idempotency-Key` on **every** `POST
 
 When a person is waiting on money movement, write the intent to your database **before** calling Brale, then reconcile with exponential backoff, retrying with the original idempotency key. Reference: [reference/reconciler.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/reconciler.ts). This is the default for an [operations dashboard](concepts.md#operations-dashboard) and any [managed treasury](concepts.md#managed-treasury) send.
 
+## Balances
+
+`GET /accounts/{account_id}/addresses/{address_id}/balance?transfer_type=…&value_type=…` — the same endpoint for a custodial wallet and a Plaid-linked bank. Both params are required; a custodial address holds many `(value_type, transfer_type)` pairs, so one dimension is not an answer.
+
+```jsonc
+// GET .../balance?transfer_type=base&value_type=SBC
+{ "address": { "id": "…", "address": "0x…" },
+  "balance": { "value": "45314.07", "currency": "USD" },
+  "value_type": "SBC", "transfer_type": "base" }
+```
+
+| You want | address | params |
+|----------|---------|--------|
+| Stablecoin balance of a custodial wallet | an internal (`type=internal`) address — list addresses and pick one | `transfer_type` = chain, `value_type` = token |
+| USD balance behind a linked bank | a **Plaid-linked** bank address | `transfer_type=ach_debit`, `value_type=USD` (account number comes back masked) |
+
+**What does not expose a balance:** external self-custody wallets and bank addresses created by Direct bank entry. Only internal custodial and Plaid-linked addresses do — for a self-custody address read the chain. Balance reads may be cached up to ~30s and are point-in-time (a bank balance does not guarantee an ACH debit will settle). To show "one number" across chains, probe each pair (see [reference/balance-discovery.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/balance-discovery.ts)) and sum.
+
 ## Webhooks
 
 Subscribe with the webhook subscription API under an account. Verify HMAC-SHA256 over the **raw body bytes**. ([webhook docs](https://docs.brale.xyz/webhooks/overview.md), [signatures](https://docs.brale.xyz/webhooks/signatures.md).)

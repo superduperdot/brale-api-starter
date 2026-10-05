@@ -160,6 +160,17 @@ WHERE id = ? AND status = 'active';
 
 Treat a zero-row update as “code already used”. Do not check and then update in two statements.
 
+## Local development
+
+`wrangler dev` (and the Vite plugin) run your Worker on the same `workerd`/miniflare runtime that production uses, with local D1, KV, R2, Queues, and Durable Objects. That parity is the point: a handler that passes locally is running the real runtime, not a Node shim. Put secrets in `.dev.vars` (gitignored — never a committed `wrangler.jsonc`) so `env.BRALE_CLIENT_SECRET` resolves the same way it will from `wrangler secret put` in production.
+
+**CORS: solve it by same-origin, not by widening headers.** The usual local pain is an SPA on `:5173` calling a Worker on `:8788` — a cross-origin request the browser preflights. Do not "fix" it by returning `Access-Control-Allow-Origin: *`; that is a header you then have to live with in production.
+
+- **Preferred:** proxy the API through the dev server so the browser only ever sees one origin. Point the Vite proxy at wrangler's *actual* port (often `8788`) — a wrong port returns an HTML error page, not JSON (see Gotchas). Same-origin in dev means no CORS code at all, matching a production deploy where the SPA and Worker share a hostname.
+- **If cross-origin is unavoidable** (separate API hostname in prod): return an explicit origin from an allowlist you control, echo it per-request, and set `Vary: Origin`. Use `Access-Control-Allow-Credentials: true` only with a specific origin — never with `*`, and the browser forbids that combination anyway. Keep the allowlist in config so dev and prod origins differ without code changes.
+
+Parity gaps to remember: inbound Brale **webhooks can't reach `localhost`** — use a tunnel (e.g. `cloudflared`) or replay a captured signed payload, and verify the signature either way. Apply D1 migrations to *both* local state directories (wrangler CLI and the Vite plugin) or a migration will look like it "did nothing."
+
 ## Gotchas
 
 | What breaks | Fix |

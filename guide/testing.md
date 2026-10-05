@@ -33,6 +33,20 @@ Extension end-to-end tests should run headed and single-threaded. Parallel heade
 | Compliance monitoring | Address normalization. Exchange classification (swap / bridge / cross-rail). API tests stay fast with the processor mocked. |
 | Managed treasury | KYB builder has no database import. Sweep note prevents a second sweep. Poller recovery and discovery are separate tests. Money regex rejects floats and exponents. |
 
+## Testnet (how to get tokens to test with)
+
+Brale has one non-production environment: **testnet** (there is no separate "sandbox"). Create a testnet application in the dashboard, enable the resources you need, and use those credentials — the environment is a property of the credential, not a URL. Only testnets are reachable (`sepolia`, `base_sepolia`, `solana_devnet`, …); mainnets are not. No real fiat moves.
+
+Getting test tokens — three documented patterns ([docs](https://docs.brale.xyz/overview/sandbox-and-testnet.md)):
+
+| Pattern | How | What it gives you |
+|---------|-----|-------------------|
+| **Mint = faucet** | `POST /transfers` with `source: { value_type: "USD", transfer_type: "wire" }` → `destination: { address_id, value_type: "SBC", transfer_type: "solana_devnet" }` | On testnet the fiat leg is skipped and tokens mint on-chain. This is how you fund a custodial address to test payouts, swaps, etc. |
+| **Burn = redeem** | The reverse: custodial stablecoin source → `{ value_type: "USD", transfer_type: "wire" }` destination | Exercises the off-ramp path; burns on-chain, skips the fiat payout. |
+| **Simulated Automation deposit** | Create an Automation with a testnet destination, wait for `status: active`, then `POST .../automations/{id}/simulations/deposits` with `{ amount, transfer_type: "ach" \| "wire" }` | Runs the full Automation → Transfer → mint → webhook flow (emits `payment.completed`). The only way to exercise the inbound-deposit path, since testnet Automations return placeholder bank coordinates. Needs `automations:write` + `network:testnet` scopes. |
+
+This "mint" is a standard transfer, not the tokenization mint/burn endpoints — those are a separate feature for tokenization (self-attested) accounts issuing their own token. Point your test suite at testnet rails and use the faucet mint in setup fixtures so tests start with a funded address.
+
 ## Mainnet
 
 “Works on mainnet” means you sent a small real amount and wrote down the transfer id, the rails, and the result in `brain.md`. Simulation is not that sentence.
