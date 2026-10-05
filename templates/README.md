@@ -25,7 +25,7 @@ One paragraph on why that shape fits. Link the playbook’s `guide/concepts.md` 
 | Surface | Endpoint or feature | Purpose |
 |---------|---------------------|---------|
 | `api.brale.xyz` | | |
-| `data.brale.xyz` | | |
+| `data.brale.xyz/price/{ticker}` | | |
 | `brale.network/api` | | |
 
 Or: **None.** Say what you use instead (on-chain sends, a local ledger).

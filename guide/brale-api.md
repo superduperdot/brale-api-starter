@@ -6,8 +6,8 @@ How to call Brale without the usual first-week failures. This page is the map an
 |---------|------|------------|
 | `api.brale.xyz` | OAuth2 bearer token | Accounts, addresses, transfers, automations, webhooks, tokenization |
 | `auth.brale.xyz` | Basic (client id and secret) | Minting the bearer token |
-| `data.brale.xyz` | None | Stablecoin pricing and index |
-| `brale.network/api` | None | Decoded wallet history and registry (read-only convenience surface) |
+| `data.brale.xyz` | None | Stablecoin price-by-ticker and the Commons token index |
+| `brale.network/api` | None | Free read API: prices, transaction lookup, wallet history (separate surface) |
 
 If you only display balances or history, stay on the read surfaces. Orchestration is a different trust boundary and needs server-held credentials.
 
@@ -108,13 +108,16 @@ Read your database in the UI after sync. Do not call Brale on every page view. F
 
 ## Read surfaces
 
-| Surface | Use |
-|---------|-----|
-| `data.brale.xyz` | Stablecoin pricing and the Commons index. Prices for a wallet or a command center. |
-| `brale.network/api/wallet/{chain}/{address}` | Decoded stablecoin history. Also a balance fallback when RPC returns nothing: sum in and out by `value_type`. |
-| `brale.network/api` | Chain metadata and the value-type / transfer-type registry. Cache in KV for about an hour. Never cache sessions there. |
+`brale.network/api` is the free, unauthenticated read API (prices, transaction lookup, wallet history). It is a separate surface from the authenticated `api.brale.xyz`, and it is not covered by the [api.brale.xyz docs](https://docs.brale.xyz). Treat it as a convenience and a fallback, not a dependency — it can be slow, and the exact response shape is not formally specced.
 
-Brale metadata does not include chain logo URLs. Keep a local map if the UI needs logos.
+| Surface | Verified shape | Use |
+|---------|----------------|-----|
+| `data.brale.xyz/price/{ticker}` | `{ symbol, name, price, currency, details }` — confirmed for `USDC`, `SBC`; unknown tickers return `404 {"error":"No price found..."}` | USD price for one stablecoin. The ticker is a symbol indexed through Brale Commons, not `list`. |
+| `data.brale.xyz/data/{ticker}` | A token-list JSON (`name`, `tokens[]` with `chainId`, `address`, `decimals`, `logoURI`) | Token metadata for an indexed stablecoin |
+| `brale.network/api/wallet/{chain}/{address}` | Not formally specced; can be slow | Decoded stablecoin history, and a balance fallback when RPC returns nothing (sum in and out by `value_type`) |
+| `brale.network/api` | Display names and explorer URLs per chain | Chain metadata. It does **not** serve logo URLs — keep a local logo map. |
+
+To add a stablecoin to the `data.brale.xyz` index, submit a token list to [Brale-xyz/commons](https://github.com/Brale-xyz/commons) under `Data/` ([docs](https://docs.brale.xyz/documentation/add-your-stablecoin.md)).
 
 ## Agents that move money
 

@@ -11,7 +11,7 @@ A person holds their own keys and sends stablecoins. The app is a browser extens
 | | |
 |--|--|
 | **Runtime** | Browser extension (WXT + React). Playwright against the **built** extension. |
-| **Brale** | Read API only. Prices from `data.brale.xyz`. Decoded history from `brale.network/api`. Sends go on-chain. |
+| **Brale** | Read API only. Prices from `data.brale.xyz/price/{ticker}`. Decoded history from `brale.network/api`. Sends go on-chain. |
 | **Do not call** | `api.brale.xyz` for user sends. This architecture is not custodial. |
 
 **Do this**
