@@ -8,11 +8,11 @@ Field notes for a library that lets software send stablecoins. Architecture: [co
 - **Do this instead:** A policy engine (`maxPerSend`, `maxPerSession`, allowlists) and an audit record run before `send()`. Rejection happens before any network call.
 - **Guide:** [Brale API](../guide/brale-api.md), [Security](../guide/security.md)
 
-### Brale is the fallback, not the sender
+### Brale Network API is a registry, not a balance source
 
-- **What happened:** Solana RPC rate limits reported a zero stablecoin balance.
-- **Do this instead:** `GET brale.network/api/wallet/solana/{address}` and sum in and out by `value_type` when RPC fails. Do not send through that API.
-- **Guide:** [Brale API — read APIs](../guide/brale-api.md)
+- **What happened:** Code assumed a `brale.network/api/wallet/{chain}/{address}` endpoint for balances. There is no such endpoint — the Brale Network API describes value types, transfer types, and prices, not wallets.
+- **Do this instead:** Read balances from chain RPC. Use `brale.network/api/value-type/:id` to get the contract address and `decimals` so you decode correctly, and `/price/:value_type` for USD value. Do not send through that API.
+- **Guide:** [Brale API — read surfaces](../guide/brale-api.md)
 
 ### Do not depend on the extension package
 

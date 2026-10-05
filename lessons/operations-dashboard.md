@@ -31,7 +31,7 @@ Field notes for a self-hosted dashboard over Brale. Architecture: [concepts.md](
 
 ### Chain logos
 
-- **Do this instead:** Keep a local chain map. The Brale API does not serve logo URLs.
+- **Do this instead:** Pull `logo_url`, `display_name`, and `explorer_url` from the open [Brale Network API](https://brale.network/api) (`/transfer-type/:id`, `/value-type/:id`) instead of hand-maintaining a chain map. Cache it (it is free but rate-limited to 120 req/min).
 - **Guide:** [Design](../guide/design-style.md)
 
 ### Environment toggle hid the wrong things

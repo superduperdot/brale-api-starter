@@ -25,7 +25,7 @@ Answers: how did value move from A to B, step by step?
 | Compliance investigation | The funds-flow tab. One sequence per subject. |
 | Par settlement | Settlement legs: escrow, delivery, attestation, claim. Capability lists use the same grammar. |
 | Analytics | The activity row: `$AMOUNT SOURCE_VT SOURCE_TT → DEST_VT DEST_TT` |
-| Self-custody wallet | Explorer links: `brale.network/tx/<transferType>/<valueType>/<hash>` |
+| Self-custody wallet | Explorer links built from the chain's `explorer_url` (`brale.network/api/transfer-type/:id`) plus the tx hash |
 
 You do not need a CSF renderer on day one. You do need the leg format in any operator-facing transfer list. See [value-layer.md](value-layer.md).
 

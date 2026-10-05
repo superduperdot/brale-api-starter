@@ -24,7 +24,7 @@ Layout range worth testing: 320px through a wide monitor. A command center that 
 | Command center | Analytics | One KPI row, charts, a live feed |
 | Side panel | Extension wallet | The default surface is the browser side panel; a popup is the alternate |
 
-Chain logos are not in the Brale API. Ship a local map (name, explorer URL, logo). If the logo comes from a third party, say so in your content-security policy rather than quietly depending on a CDN you did not review.
+Chain and token metadata — `display_name`, `logo_url`, `explorer_url`, `decimals` — comes from the open [Brale Network API](https://brale.network/api) (`/transfer-type/:id`, `/value-type/:id`). Prefer it over a hand-maintained map. If you self-host or proxy those logo assets, account for them in your content-security policy rather than hotlinking a CDN you did not review.
 
 ## CSS modules, when Tailwind is the wrong weight
 

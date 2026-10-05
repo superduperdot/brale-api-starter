@@ -7,7 +7,7 @@ How to call Brale without the usual first-week failures. This page is the map an
 | `api.brale.xyz` | OAuth2 bearer token | Accounts, addresses, transfers, automations, webhooks, tokenization |
 | `auth.brale.xyz` | Basic (client id and secret) | Minting the bearer token |
 | `data.brale.xyz` | None | Stablecoin price-by-ticker and the Commons token index |
-| `brale.network/api` | None | Free read API: prices, transaction lookup, wallet history (separate surface) |
+| `brale.network/api` | None | Open registry of value types, transfer types, and prices (OpenAPI 3.1 + MCP) |
 
 If you only display balances or history, stay on the read surfaces. Orchestration is a different trust boundary and needs server-held credentials.
 
@@ -71,7 +71,7 @@ Create a transfer under an account. Send an `Idempotency-Key` on **every** `POST
 - `amount.value` is a decimal string. `amount.currency` is an ISO-4217 code (usually `USD`) and is **separate from `value_type`** — a `MXNe` leg is denominated in MXN, not USD. Keep the value a string end to end.
 - `value_type` and `transfer_type` are case-sensitive ids from Coverage: fiat value types are lowercase (`usd`, `mxn`), onchain tokens use their ticker (`SBC`, `USDC`, `MXNe`), rails are lowercase (`wire`, `base`). Use testnet rail ids (`base_sepolia`, `solana_devnet`) on testnet.
 - A balance query needs both dimensions: `?transfer_type=base&value_type=SBC`. One without the other is not a balance.
-- The API does not enumerate valid `(value_type, transfer_type)` pairs for an address. Probe the combinations you support and skip errors. Reference: [reference/balance-discovery.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/balance-discovery.ts).
+- `api.brale.xyz` does not enumerate the valid `(value_type, transfer_type)` pairs for a specific address — probe the combinations you support and skip errors ([reference/balance-discovery.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/balance-discovery.ts)). For the *global* registry of which value types exist on which chains, read `brale.network/api` (see read surfaces below).
 - List endpoints paginate with `page[size]` (1–100), `page[next]`, and `page[prev]` cursors from the response `pagination` object. Send at most one of next/prev.
 
 ### Intent-first writes
@@ -111,16 +111,25 @@ Read your database in the UI after sync. Do not call Brale on every page view. F
 
 ## Read surfaces
 
-`brale.network/api` is the free, unauthenticated read API (prices, transaction lookup, wallet history). It is a separate surface from the authenticated `api.brale.xyz`, and it is not covered by the [api.brale.xyz docs](https://docs.brale.xyz). Treat it as a convenience and a fallback, not a dependency — it can be slow, and the exact response shape is not formally specced.
+`brale.network/api` is the **Brale Network API**: a free, open, unauthenticated registry of value types, transfer types, and prices. No keys, no signup. 120 requests/minute per IP (watch the `X-RateLimit-*` headers; back off on `Retry-After`). It is a separate surface from the authenticated `api.brale.xyz` — it describes and prices the value layer, it does **not** move money. Full spec: [`brale.network/api/openapi.json`](https://brale.network/api/openapi.json) (OpenAPI 3.1), plus an MCP server at `brale.network/api/mcp`.
 
-| Surface | Verified shape | Use |
-|---------|----------------|-----|
-| `data.brale.xyz/price/{ticker}` | `{ symbol, name, price, currency, details }` — confirmed for `USDC`, `SBC`; unknown tickers return `404 {"error":"No price found..."}` | USD price for one stablecoin. The ticker is a symbol indexed through Brale Commons, not `list`. |
-| `data.brale.xyz/data/{ticker}` | A token-list JSON (`name`, `tokens[]` with `chainId`, `address`, `decimals`, `logoURI`) | Token metadata for an indexed stablecoin |
-| `brale.network/api/wallet/{chain}/{address}` | Not formally specced; can be slow | Decoded stablecoin history, and a balance fallback when RPC returns nothing (sum in and out by `value_type`) |
-| `brale.network/api` | Display names and explorer URLs per chain | Chain metadata. It does **not** serve logo URLs — keep a local logo map. |
+List endpoints return `{ "data": [...] }`; single-resource endpoints return `{ "data": { ... } }`. Errors are `{ "error": { "code", "message" }, "status" }` with codes like `NOT_FOUND` and `RATE_LIMITED`.
 
-To add a stablecoin to the `data.brale.xyz` index, submit a token list to [Brale-xyz/commons](https://github.com/Brale-xyz/commons) under `Data/` ([docs](https://docs.brale.xyz/documentation/add-your-stablecoin.md)).
+| Endpoint | Returns |
+|----------|---------|
+| `GET /value-type/list`, `/value-type/:id` | Value types. `:id` is a symbol (`sbc`, `usdc`). Each carries `symbol`, `display_name`, `decimals`, `logo_url`, `program`, `transfer_types[]`, `contract_addresses`. |
+| `GET /value-type/:id/transfer-type/list` | Which chains carry a value type |
+| `GET /transfer-type/list`, `/transfer-type/:id` | Transfer types (chains and rails). `slug`, `ecosystem_family`, `native_symbol`, `status`, `explorer_url`, `value_types[]`. |
+| `GET /transfer-type/:id/value-type/list` | Which value types are available on a chain |
+| `GET /price/list` | Reference price and 24h primary-market activity for every value type |
+| `GET /price/:value_type` | Price with a per-chain `by_transfer_type` breakdown (confirmed live for `sbc`) |
+| `GET /price/:value_type/:transfer_type` | Price scoped to one chain |
+| `GET /tokenlist/brale.json`, `/tokenlist/:transfer_type` | Deployments in token-list format |
+| `GET /llms/static-context.json` | The whole value layer as structured LLM context |
+
+Use this surface for the registry (the authenticated API does not enumerate `(value_type × transfer_type)` pairs for you) and for prices. It **does** serve `logo_url` and `explorer_url`, so you may not need a local chain-logo map after all. There is no wallet-history or transaction-lookup endpoint here; for an address's on-chain history, read the chain directly.
+
+`data.brale.xyz` is a simpler price surface: `GET data.brale.xyz/price/{ticker}` → `{ symbol, name, price, currency, details }` (confirmed for `USDC`, `SBC`; unknown tickers `404`, so `/price/list` is not valid there — use `brale.network/api/price/list` for the full set). `data.brale.xyz/data/{ticker}` returns a token list. To get a stablecoin indexed, submit a token list to [Brale-xyz/commons](https://github.com/Brale-xyz/commons) under `Data/` ([docs](https://docs.brale.xyz/documentation/add-your-stablecoin.md)).
 
 ## Agents that move money
 

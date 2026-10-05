@@ -23,8 +23,8 @@ Field notes for a browser extension where the person holds the keys. Architectur
 ### Balances and history lie if you trust one source
 
 - **What happened:** Public Solana RPCs rate-limit or omit transaction data, so stables looked like a zero balance.
-- **Do this instead:** Use a reliable RPC for the native asset. Race RPC against `brale.network/api` for stablecoin history. Merge on `chain:txHash`. Paint a cached balance and refresh behind it.
-- **Guide:** [Brale API — read APIs](../guide/brale-api.md), [Design](../guide/design-style.md)
+- **Do this instead:** Use a reliable RPC (and an indexer where needed). Pull the contract address and `decimals` from `brale.network/api/value-type/:id` so you query the right token and decode it correctly. Merge activity on `chain:txHash`. Paint a cached balance and refresh behind it. The Brale Network API is a registry and price source, not a wallet-history endpoint.
+- **Guide:** [Brale API — read surfaces](../guide/brale-api.md), [Design](../guide/design-style.md)
 
 ### Content scripts reaching the vault
 
@@ -40,5 +40,5 @@ Field notes for a browser extension where the person holds the keys. Architectur
 
 ### Explorer links
 
-- **Do this instead:** Link tracked stablecoins to `brale.network/tx/<transferType>/<valueType>/<hash>`.
-- **Guide:** [CSF and GSF](../guide/csf-gsf.md)
+- **Do this instead:** Build explorer links from the chain's `explorer_url` in `brale.network/api/transfer-type/:id` plus the tx hash. Do not hardcode explorer domains per chain.
+- **Guide:** [Brale API — read surfaces](../guide/brale-api.md)

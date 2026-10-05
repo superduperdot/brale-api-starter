@@ -11,16 +11,16 @@ A person holds their own keys and sends stablecoins. The app is a browser extens
 | | |
 |--|--|
 | **Runtime** | Browser extension (WXT + React). Playwright against the **built** extension. |
-| **Brale** | Read API only. Prices from `data.brale.xyz/price/{ticker}`. Decoded history from `brale.network/api`. Sends go on-chain. |
+| **Brale** | Read API only. Prices and the token registry (contract addresses, decimals, explorer URLs) from `brale.network/api`. Sends and balances go on-chain. |
 | **Do not call** | `api.brale.xyz` for user sends. This architecture is not custodial. |
 
 **Do this**
 
 - Encrypt the vault in extension local storage. Keep the session key in session storage. Decrypted key material stays on the heap and is zero-filled after use.
 - Never regenerate the KDF salt when re-sealing. A new salt bricks unlock.
-- Race public RPC against the Brale wallet history endpoint. Merge activity on `chain:txHash`. Serve cached balances and refresh in the background.
+- Read balances and history on-chain (RPC / an indexer). Use `brale.network/api/value-type/:id` to know which contract and `decimals` to decode. Merge activity on `chain:txHash`. Serve cached balances and refresh in the background.
 - On Solana, query both the classic token program and Token-2022. Some Brale-issued stables use Token-2022.
-- Link tracked stablecoins to `brale.network/tx/<transferType>/<valueType>/<hash>`.
+- Build explorer links from the chain's `explorer_url` in `brale.network/api/transfer-type/:id` plus the tx hash.
 - Gate privileged messages to extension pages. Take the dapp origin from the browser sender, never from the page.
 
 **Skip this**
@@ -37,7 +37,7 @@ A bot or agent sends stablecoins with no human approval popup. Ship it as a libr
 | | |
 |--|--|
 | **Runtime** | TypeScript library. Vitest. Explicit `destroy()` that zero-fills and then throws. |
-| **Brale** | Read API as a **balance fallback only** (`brale.network/api/wallet/{chain}/{address}`). Not used to send. |
+| **Brale** | `brale.network/api` for the token registry and prices (which contract, which `decimals`, current price). Balances come from chain RPC. Not used to send. |
 | **Control** | A policy engine in front of every send: per-send cap, session cap, allowlists. Write the audit log, then reject, before any network call. |
 
 Derive addresses with the same BIP-39 / BIP-44 / SLIP-0010 rules a self-custody wallet would use, so the same mnemonic yields the same addresses. The library can reimplement that crypto. It should not depend on an extension package.
