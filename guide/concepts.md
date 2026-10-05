@@ -12,7 +12,8 @@ A person holds their own keys and sends stablecoins. The app is a browser extens
 |--|--|
 | **Runtime** | Browser extension (WXT + React). Playwright against the **built** extension. |
 | **Brale** | Read API only. Prices and the token registry (contract addresses, decimals, explorer URLs) from `brale.network/api`. Sends and balances go on-chain. |
-| **Do not call** | `api.brale.xyz` for user sends. This architecture is not custodial. |
+| **Custody** | The *user* holds their own keys, so their balance is not Brale-custodied. Sign and broadcast user sends on-chain — do not create them as `api.brale.xyz` transfers, whose `source` is always a Brale-custodied internal address. (`api.brale.xyz` is the custodial/managed surface; using it to move the user's funds would make the wallet custodial.) |
+| **Still fine to use `api.brale.xyz` for** | Your own (parent) account, and fiat on/off-ramps that land on the user's self-custody address as an **external destination** — that is a *transactional* managed account, not a Brale-held balance. See [Brale's self-custody wallet pattern](https://docs.brale.xyz/guides/self-custody-wallets.md). |
 
 **Do this**
 
