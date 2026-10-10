@@ -125,7 +125,7 @@ Production integrations that mirror Brale locally use three layers. Webhooks alo
 | Webhooks | Real time | — |
 | Safety-net poll | Missed events, stuck rows | 30–60 seconds |
 
-Read your database in the UI after sync. Do not call Brale on every page view. For managed accounts the poll is two jobs (recover stuck rows, discover unseen deposits); see [managed-accounts.md](managed-accounts.md).
+Read your database in the UI after sync. Do not call Brale on every page view. For managed accounts the poll is four jobs (recover stuck rows, discover unseen deposits, balance sweep, preferred-hold reconciliation); see [managed-accounts.md](managed-accounts.md).
 
 ## Read surfaces
 
@@ -169,6 +169,10 @@ See the official [troubleshooting page](https://docs.brale.xyz/documentation/tro
 | Webhook routes return `401 invalid_signature` | Usually the wrong subscription secret, a parsed body, or a stale env. |
 | Fiat legs have no transaction hash; cross-chain legs may have two (burn and mint) | Render 0, 1, or 2 hashes from the payload. Do not invent one. |
 | Token expired mid-run | `401` means refresh and retry, not fail. |
+| `listTransfers` returns ~25 results with no deeper paging | `page[size]` and `page[next]`/`page[prev]` work within one page, but there is a ceiling (~25 items). Do not rely on transfer listing as a complete ledger. Read balances as the backstop. |
+| Automation `PATCH`/`DELETE` returns 404 or 422 | Automations are immutable once created. Create a new one targeting the updated destination. The old one stays active until archived. |
+| 403 "Incorrect API key for requested network" on a balance or transfer call | The address belongs to a different environment (testnet vs mainnet) than the token you are using. Filter addresses by environment before operating on them. |
+| Cron Trigger exceeds subrequest limit | A poller that reads balances, submits sweeps, and sends emails across many accounts can exhaust the Worker subrequest budget. Process high-priority accounts first and stop early if the budget is low. |
 
 ## Managed accounts
 

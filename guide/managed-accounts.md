@@ -118,16 +118,68 @@ While any row is `settling`, the client polls about every 5 seconds and shows a 
 
 ## Poller
 
-Webhooks are the fast path. They are not guaranteed. Run a Cron Trigger every 60 seconds with two jobs:
+Webhooks are the fast path. They are not guaranteed. Run a Cron Trigger every 60 seconds with four jobs:
 
 | Job | Work | Cost |
 |-----|------|------|
 | Recovery | Rows stuck in `settling` or `pending`. Read Brale. Move them to `settled` or `failed`. | Proportional to stuck rows |
 | Discovery | List recent transfers for each active account. Insert inbound deposits you have never seen. Start sweeps. | Proportional to active accounts |
+| Balance sweep | Read balances on every known custodial address. Sweep any non-preferred hold above dust (`0.01`) to the preferred hold. | Proportional to active addresses × sweepable value types |
+| Preferred-hold reconciliation | Compare actual Brale balance on the preferred hold against the ledger's expected balance. If actual > expected, query `listTransfers` for the specific transfer first, then record any remaining gap. | 1 balance read + 1 list call per active account |
 
-Together, a missed webhook still shows up within a minute. A poller that only retries known rows will never see a deposit that never arrived as a webhook.
+Together, a missed webhook still shows up within a minute.
+
+**Why four jobs, not two.** Discovery relies on `listTransfers`, which returns only the ~25 most recent transfers with no way to page deeper. Deposits older than that window are invisible to discovery. The balance sweep catches funds that landed on a non-preferred chain and were never listed. The reconciliation catches funds that landed directly on the preferred hold — there is nothing to sweep, and nothing to discover once the transfer falls off the list window.
+
+### Balance sweep details
+
+For each active org, iterate every custodial address that matches the account's environment. Skip the preferred hold (that is the destination, not a source). For each `(address, value_type)` pair above dust, create one Brale transfer into the preferred hold. Tag the note as `sweep:balance:{address}:{transfer_type}:{value_type}` and check for in-flight sweeps with that prefix before submitting.
+
+### Preferred-hold reconciliation details
+
+```
+actual  = Brale getBalance on the preferred-hold address
+expected = SUM(credits to preferred hold, settled) - SUM(debits from preferred hold, settled)
+gap     = actual - expected
+
+if gap < dust → skip
+if gap ≥ dust:
+  1. Query listTransfers. Match any completed inbound transfers we have not recorded.
+     Record each with its Brale transfer ID, real source, and amount.
+  2. Recompute the remaining gap. If still ≥ dust, record a generic inbound deposit.
+```
+
+Step 1 pre-empts the webhook: the deposit gets full Brale metadata instead of a bare gap record. Step 2 is the last resort for on-chain credits that never appear in the transfer list at all.
+
+### Cross-environment address filter
+
+When an org has both testnet and mainnet Brale accounts, the `brale_addresses` table contains addresses for **all** environments under the same `organization_id`. The balance sweep and any per-address job must filter addresses to match the account's environment:
+
+```ts
+const filtered = allAddresses.filter(
+  (a) => networkEnvironment(a.transfer_type) === account.environment,
+);
+```
+
+Without this, a testnet account will try to read and sweep mainnet addresses (and vice versa), producing Brale `403 Incorrect API key for requested network` errors. This also wastes subrequests and can push the Worker over its subrequest limit.
+
+### Subrequest budget
+
+A Cron Trigger that processes many accounts, reads balances, submits sweeps, and sends email notifications can exhaust the Worker subrequest limit (50 on the free plan, 1000 on paid). Guard against this by:
+
+- Processing accounts in priority order (live before test, stuck before healthy).
+- Counting subrequests and stopping early if the budget is low.
+- Deferring non-critical work (e.g. testnet sweeps) to the next cycle.
 
 Analytics-style sync (backfill + webhook + alarm, no sweep) is the lighter version in [brale-api.md](brale-api.md). Use that when you are not converting deposits to a preferred hold.
+
+## Automations
+
+Brale Automations mint stablecoins to a destination when fiat (wire/ACH) is received. Key operational facts:
+
+- **Automations are immutable.** `PATCH` and `DELETE` both return 404 or 422. To change the destination chain, create a new automation. The old one stays active until archived.
+- **Retargeting the preferred hold.** If you change the preferred hold from one chain to another, create a new automation pointing at the new chain. Any deposits that still hit the old automation's destination will be caught by the balance sweep and converted to the preferred hold.
+- **One automation per deposit rail per account.** A single automation covers all wire deposits for an account. You do not need one per chain.
 
 ## Legal
 
