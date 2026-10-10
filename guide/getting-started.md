@@ -53,7 +53,7 @@ Reference implementation: [brale-agent-kit/reference/auth.ts](https://github.com
 
 - [ ] Read the raw body, then verify HMAC-SHA256. Header: `x-request-signature-sha-256`.
 - [ ] Base64URL-decode `sharedSecret`. Do not HMAC the encoded string. It is shown once.
-- [ ] Compare in constant time. Return 200, then process with `ctx.waitUntil()`.
+- [ ] Compare in constant time. For transfer state transitions, await the write before returning `200`. `ctx.waitUntil()` is only safe for idempotent, non-critical writes ([details](brale-api.md#webhooks)).
 - [ ] Add a poller. Webhook delivery is not a guarantee. 30–60 seconds is the range that has worked.
 
 ### Before production

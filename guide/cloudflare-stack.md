@@ -58,6 +58,10 @@ One instance per key: an organization, an order, an API key. Use `blockConcurren
 
 Do not put high-throughput fan-out on a Durable Object. That is a queue, or it is work you await inside the request.
 
+### Deposit-first transfers
+
+When a transfer starts with a user deposit to a Brale address, a Durable Object per transfer owns the lifecycle: detect the deposit via alarm-driven balance polling, post the Brale transfer, and handle the terminal webhook. The alarm is the primary deposit-detection mechanism — Brale does not webhook on-chain deposits (see [brale-api.md](brale-api.md#pitfalls)). Write the idempotency key to DO storage before the `POST /transfers` call so a crash mid-flight retries safely. The webhook wakes the DO, but the DO reads Brale to confirm before transitioning. The alarm is the safety net if the webhook never arrives.
+
 ## Alarms and cron
 
 Workers are ephemeral. Anything that must run every minute (transfer poll, balance poll, stuck-row recovery) is an alarm or a Cron Trigger.
