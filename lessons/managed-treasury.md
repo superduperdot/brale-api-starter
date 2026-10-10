@@ -27,8 +27,26 @@ Field notes for business onboarding, a single preferred balance, and settlement.
 ### A poller that only retried known rows
 
 - **What happened:** Deposits with no webhook never appeared, because recovery only looked at rows you already had.
-- **Do this instead:** Every 60 seconds, recover stuck rows **and** list recent Brale transfers per active account to insert ones you have never seen.
+- **Do this instead:** Every 60 seconds, recover stuck rows **and** list recent Brale transfers per active account to insert ones you have never seen. But `listTransfers` only returns ~25 recent items. Add a balance sweep for non-preferred-hold funds and a reconciliation job for the preferred hold.
 - **Guide:** [Managed accounts — poller](../guide/managed-accounts.md)
+
+### Preferred-hold deposits invisible
+
+- **What happened:** A deposit landed directly on the preferred hold. There was nothing to sweep, the webhook never fired, and the transfer aged past the `listTransfers` window. The balance was correct on Brale but the local ledger had no record — no activity entry, no email.
+- **Do this instead:** Compare the actual Brale balance on the preferred hold against the ledger's expected total. When actual > expected, query `listTransfers` to find the specific transfer first (preserving real Brale metadata), then record any remaining gap as a generic deposit. See [balance-reconciliation.md](balance-reconciliation.md).
+- **Guide:** [Managed accounts — preferred-hold reconciliation](../guide/managed-accounts.md#preferred-hold-reconciliation-details)
+
+### Sweep crossed environments
+
+- **What happened:** An org had testnet and mainnet accounts. The balance sweep iterated all addresses regardless of environment. The testnet token tried to read a mainnet Canton address — Brale returned 403 on every 60-second cycle.
+- **Do this instead:** Filter addresses by `networkEnvironment(transfer_type) === account.environment` before reading balances or submitting sweeps.
+- **Guide:** [Managed accounts — cross-environment address filter](../guide/managed-accounts.md#cross-environment-address-filter)
+
+### Automation could not be retargeted
+
+- **What happened:** The preferred hold changed from Base to Canton. The wire automation still pointed at Base. `PATCH` and `DELETE` both failed — automations are immutable.
+- **Do this instead:** Create a new automation targeting the new chain. The old one stays active. The balance sweep catches deposits that land on the old destination. See [managed-accounts.md — automations](../guide/managed-accounts.md#automations).
+- **Guide:** [Managed accounts — automations](../guide/managed-accounts.md#automations)
 
 ### Passwords for a small, invited user base
 
