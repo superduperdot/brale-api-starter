@@ -37,6 +37,18 @@ Which to build:
 
 Availability depends on entity type, account type, and jurisdiction — see [Account availability](https://docs.brale.xyz/coverage/account-availability.md).
 
+### Individual transactional for consumer transfers
+
+A consumer transfer product — where a person deposits stablecoins and receives a different stablecoin or a payout — uses **individual transactional** accounts. The transactional account carries the person's KYC verification. Brale executes user instructions under it. The managing (parent) account provides API authentication but is not in the funds flow and does not custody user funds.
+
+| Piece | Role |
+|-------|------|
+| Individual transactional account | KYC-verified. Brale executes the user's transfer instructions under this account. External destination addresses are registered here. |
+| Internal deposit address | Created per transfer under the API credentials. Brale holds the address; the user sends tokens to it. See [dedicated deposit addresses](brale-api.md#dedicated-deposit-addresses). |
+| Managing account | API auth only. Creates addresses, reads balances, posts transfers. Not a custodian, not an intermediary. |
+
+KYC details (name, date of birth, identity number) are sent to Brale on account creation and not stored — the same transit-only rule as KYB. Identity types depend on jurisdiction: SSN for U.S. residents, passport or national ID outside the U.S. Check [account availability](https://docs.brale.xyz/coverage/account-availability.md) before collecting identity data.
+
 ## Onboarding
 
 ```

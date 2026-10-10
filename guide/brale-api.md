@@ -32,7 +32,7 @@ Grouped by resource. Exact paths and payloads are in the [API reference](https:/
 |----------|-----------|-------|
 | **Accounts** | list, create, get | `account_id` identifies a KYB business or KYC individual, custodial or transactional. KYB/KYC details go in on create. There is **no** `/kyb` endpoint. |
 | **Verification documents** | stage, list, link | Two steps: stage a document, then link it to the account. This is how supplemental KYB/KYC verification is submitted. |
-| **Addresses** | list, get, create external, create internal, update, **balance** | `source` of a transfer must be an internal (custodial) address. Balance needs both `transfer_type` and `value_type` as query params. |
+| **Addresses** | list, get, create external, create internal, update, **balance** | `source` of a transfer must be an internal (custodial) address. Balance needs both `transfer_type` and `value_type` as query params. An EVM address (`0x…`) works on all EVM chains — register it with every EVM transfer type in one call. |
 | **External bank addresses** | Plaid link token → register, or direct entry | Plaid is a two-call flow (link token, then exchange `public_token` for an `address_id`). |
 | **Automations** | list, create, get, archive, simulate deposit | Mints to a destination when fiat is received. This is the wire/ACH auto-mint path. `simulate` drives the full testnet flow without real fiat. |
 | **Transfers** | list, create, get | `POST` creates. Idempotency key required. See below. |
@@ -96,6 +96,10 @@ When a person is waiting on money movement, write the intent to your database **
 
 **What does not expose a balance:** external self-custody wallets and bank addresses created by Direct bank entry. Only internal custodial and Plaid-linked addresses do — for a self-custody address read the chain. Balance reads may be cached up to ~30s and are point-in-time (a bank balance does not guarantee an ACH debit will settle). To show "one number" across chains, probe each pair (see [reference/balance-discovery.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/balance-discovery.ts)) and sum.
 
+### Dedicated deposit addresses
+
+When the user deposits before the outbound transfer is created, create one internal address per transfer. The balance on that address is the deposit for that transfer and nothing else. Checking `balance === instructed amount` is clean when the address is not shared.
+
 ## Webhooks
 
 Subscribe with the webhook subscription API under an account. Verify HMAC-SHA256 over the **raw body bytes**. ([webhook docs](https://docs.brale.xyz/webhooks/overview.md), [signatures](https://docs.brale.xyz/webhooks/signatures.md).)
@@ -108,7 +112,7 @@ Subscribe with the webhook subscription API under an account. Verify HMAC-SHA256
 | Secret scope | Each subscription has its own `sharedSecret`. Verify a delivery with the secret of the subscription that delivered it. **Do not** look the secret up by `data.account_id` — one managing-account subscription signs events for its managed accounts too. |
 | Storage | The `sharedSecret` is returned **once**, at creation. Store it immediately, encrypted. |
 | Compare | Constant time. |
-| Handler | Return `200` immediately. Deduplicate by event id before side effects. Do the write in `ctx.waitUntil()`. |
+| Handler | Deduplicate by event id. For analytics or idempotent writes (`INSERT OR IGNORE`), return `200` and process in `ctx.waitUntil()`. For transfer state transitions — confirming funds, posting a transfer, closing an order — await the write before returning `200`. |
 | Scopes | The application needs webhook read and write permissions. |
 
 Reference: [reference/webhook-verify.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/webhook-verify.ts).
@@ -173,6 +177,9 @@ See the official [troubleshooting page](https://docs.brale.xyz/documentation/tro
 | Automation `PATCH`/`DELETE` returns 404 or 422 | Automations are immutable once created. Create a new one targeting the updated destination. The old one stays active until archived. |
 | 403 "Incorrect API key for requested network" on a balance or transfer call | The address belongs to a different environment (testnet vs mainnet) than the token you are using. Filter addresses by environment before operating on them. |
 | Cron Trigger exceeds subrequest limit | A poller that reads balances, submits sweeps, and sends emails across many accounts can exhaust the Worker subrequest budget. Process high-priority accounts first and stop early if the budget is low. |
+| User deposits tokens to a custodial address but no webhook fires | Brale does not send a webhook for on-chain deposits to a custodial address. Poll `GET .../addresses/{id}/balance` to detect them. The poller or alarm is the primary detection mechanism for deposits, not a safety net. |
+| `POST .../addresses/internal` returns `address: null` | Internal address creation is asynchronous. The response may have `status: "pending"` with no on-chain address yet. Poll `GET .../addresses/{id}` until `status` is `"active"` and `address` is non-null. |
+| `POST .../addresses/external` returns `409` | The address string is already registered on this account. List addresses to find the existing one. If it needs an additional chain, `PATCH .../addresses/{id}` with `additional_transfer_types`. |
 
 ## Managed accounts
 

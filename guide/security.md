@@ -20,7 +20,7 @@ Store sessions in D1 (revocable, with a TTL) or in a server-side session. A 24-h
 
 Do not store auth state in KV. KV is eventually consistent, and a revoked session that still works is the bug.
 
-Rate-limit authentication. A starting point that has shipped: 5 attempts per 15 minutes per IP, counted in D1. For email codes, limit **both** sends (3 per address per 10 minutes, counted in KV) **and** verification attempts (burn the code after ~5 wrong guesses) — throttling sends alone does not stop code guessing. See [Passwordless email codes](#passwordless-email-codes). KV is acceptable for these counters because a stale counter fails closed toward “try later,” not toward “you are still logged in.”
+Rate-limit authentication. A starting point that has shipped: 5 attempts per 15 minutes per IP, counted in D1. For email codes or SMS, limit sends per address (3 per 10 minutes), sends per IP (10 per hour), **and** verification attempts (burn the code after ~5 wrong guesses). Throttling sends per address alone does not stop code guessing, and it does not stop an attacker from burning your delivery budget across many addresses from one IP. See [Passwordless email codes](#passwordless-email-codes). KV is acceptable for these counters because a stale counter fails closed toward “try later,” not toward “you are still logged in.”
 
 ## Webhooks
 
