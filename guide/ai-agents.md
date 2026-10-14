@@ -16,7 +16,7 @@ Read `brain.md` first, then the architecture section you are touching, then `AGE
 
 `brain.md` describes the repository as it is. If a behavior is not in the code, it is not in `brain.md`. Add dated notes. Do not rewrite history into a plan.
 
-Copy the starters from [templates/](../templates/).
+Copy the starters from [templates/](../templates/). Alternatively, install the packaged skills (`./skills/install.sh`) so the agent can apply architecture routing, Cloudflare patterns, scaffolding, and security review directly. See [skills/README.md](../skills/README.md).
 
 ## How an agent should use this playbook
 
@@ -47,6 +47,9 @@ Spikes live in `experiments/` (or a similar directory) outside the package you p
 ## Related
 
 - [getting-started.md](getting-started.md)
+- [durable-objects.md](durable-objects.md) — cross-cutting DO patterns
+- [sync-engine.md](sync-engine.md) — backfill, cursors, balance discovery
 - [../templates/brain.md](../templates/brain.md)
 - [../templates/AGENTS.md](../templates/AGENTS.md)
 - [../lessons/README.md](../lessons/README.md)
+- [../skills/README.md](../skills/README.md) — installable agent skills

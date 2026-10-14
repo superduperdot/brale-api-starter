@@ -28,9 +28,12 @@ Do not add product names, private repo links, or a catalog of sibling applicatio
 | A Cloudflare primitive is the right (or wrong) tool | `guide/cloudflare-stack.md` and, if it changes the recommended shape, `guide/concepts.md` |
 | A security control changes | `guide/security.md` |
 | CSF or GSF changes | `guide/csf-gsf.md` (pinned version and date) |
+| A Durable Object pattern changes or is added | `guide/durable-objects.md` and the matching `guide/concepts.md` section |
+| Sync, backfill, or balance-discovery logic changes | `guide/sync-engine.md` and, if it changes a poller, `guide/managed-accounts.md` |
 | A new architecture is common enough to recommend | A section in `guide/concepts.md` plus `lessons/<concept>.md` |
 | Brale docs change | Re-verify `guide/brale-api.md` and the table in [README.md](README.md) |
 | `brale-agent-kit` documents a new pitfall | Pull the rule into `guide/brale-api.md`. Leave the code in the kit. |
+| A `guide/` page changes a recommendation used by a skill | Update the matching `skills/` SKILL.md to stay in sync |
 
 ## Voice
 

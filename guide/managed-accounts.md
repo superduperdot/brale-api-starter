@@ -185,6 +185,29 @@ A Cron Trigger that processes many accounts, reads balances, submits sweeps, and
 
 Analytics-style sync (backfill + webhook + alarm, no sweep) is the lighter version in [brale-api.md](brale-api.md). Use that when you are not converting deposits to a preferred hold.
 
+### Webhook deduplication
+
+Two patterns that work:
+
+| Pattern | Store | Trade-off |
+|---------|-------|-----------|
+| KV key `webhook:{event.id}` with 7-day TTL | KV | Fast; eventually consistent (a race during KV propagation can reprocess once) |
+| `INSERT OR IGNORE INTO brale_events (event_id, event_type)` | D1 | Strong; the write is the dedup |
+
+If you operate both testnet and mainnet, verify the webhook with the correct environment's subscription secret. Try the test secret, then the live secret; set `verifiedEnvironment` for downstream Brale client selection.
+
+### Transfer event tracking
+
+A `transfer_events` table records the source (webhook, poller, API) and timestamp for each transfer state change. Query it for settlement-latency SLOs per transfer type.
+
+### Wire instructions may lag automation
+
+When KYB completes and you create an automation, `funding_instructions` (the bank coordinates to share with the depositor) may not be immediately present on the automation response. Lazy-poll: on the `/me` or funding-instructions route, list automations for the account and cache the first one that carries `source.funding_instructions` as JSON in D1.
+
+### Per-environment managed-account rows
+
+Store managed accounts in a table with an `environment` column (`org_brale_accounts (organization_id, environment, brale_account_id, kyb_status, ...)`). A live activation always creates a new Brale account — never reuse the testnet one. Resolution must never fall back from live to test.
+
 ## Automations
 
 Brale Automations mint stablecoins to a destination when fiat (wire/ACH) is received. Key operational facts:
@@ -192,6 +215,15 @@ Brale Automations mint stablecoins to a destination when fiat (wire/ACH) is rece
 - **Automations are immutable.** `PATCH` and `DELETE` both return 404 or 422. To change the destination chain, create a new automation. The old one stays active until archived.
 - **Retargeting the preferred hold.** If you change the preferred hold from one chain to another, create a new automation pointing at the new chain. Any deposits that still hit the old automation's destination will be caught by the balance sweep and converted to the preferred hold.
 - **One automation per deposit rail per account.** A single automation covers all wire deposits for an account. You do not need one per chain.
+
+## Verification documents
+
+When Brale's KYB review requests additional documents (`account.verification.documents_required` webhook or polling), the flow is:
+
+1. **Stage** the document: `POST /accounts/{account_id}/documents` with multipart form data — `file` (the document), `document_kind`, and optionally `person_label` for individual (KYC) documents.
+2. **Link** staged submissions to the account: `PATCH /accounts/{account_id}` with `{ doc_submission_ids: [...] }`.
+
+Known document kinds: `articles_of_incorporation`, `certificate_of_good_standing`, `ein_letter`, `government_photo_id`. Gate the upload behind `kyb_status === 'documents_required'` — return 400 otherwise.
 
 ## Legal
 

@@ -31,3 +31,18 @@ Field notes for a library that lets software send stablecoins. Architecture: [co
 - **What happened:** A long-running agent kept key material after the caller was finished.
 - **Do this instead:** `destroy()` zero-fills and throws on later calls.
 - **Guide:** [Security](../guide/security.md)
+
+### Float rounding in send amounts
+- **What happened:** Token amounts were computed as `BigInt(Math.round(parseFloat(amount) * 10 ** decimals))`. Floating-point imprecision silently changed the amount.
+- **Do this instead:** Use a decimal-string library or integer arithmetic on the raw string. Never `parseFloat` a financial amount.
+- **Guide:** [Value Layer — money](../guide/value-layer.md)
+
+### Zero-fill-after-copy regression
+- **What happened:** After SLIP-0010 derivation, `seed.fill(0)` zeroed the seed — but the derived secret key bytes had already been copied by reference, not by value. The live key was zeroed.
+- **Do this instead:** Copy secret-key bytes into a new buffer before zero-filling the source. Test: `secretKeyBytes is not zeroed after fromMnemonic`.
+- **Guide:** [Security](../guide/security.md)
+
+### No shared derivation test vectors
+- **What happened:** The extension and the agent library derived different addresses from the same mnemonic because derivation paths diverged silently.
+- **Do this instead:** Pin test vectors (e.g. `abandon…about` → known EVM and Solana addresses for `m/44'/60'/0'/0/0` and `m/44'/501'/0'/0'`). Run them in both packages.
+- **Guide:** [Testing](../guide/testing.md)

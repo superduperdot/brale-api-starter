@@ -26,6 +26,10 @@ Layout range worth testing: 320px through a wide monitor. A command center that 
 
 Chain and token metadata — `display_name`, `logo_url`, `explorer_url`, `decimals` — comes from the open [Brale Network API](https://brale.network/api) (`/transfer-type/:id`, `/value-type/:id`). Prefer it over a hand-maintained map. If you self-host or proxy those logo assets, account for them in your content-security policy rather than hotlinking a CDN you did not review.
 
+`logo_url` and `explorer_url` on the Brale Network API (`/value-type/:id`, `/transfer-type/:id`) are confirmed present (verified against `brale.network/api/openapi.json`, 2026-10-14). Prefer the registry over a hand-maintained chain-meta map.
+
+For real-time feeds, define stale-attention thresholds per rail — wire and ACH transfers settle slower than on-chain, so a wire row that has been 'pending' for 2 hours is normal, while an on-chain transfer pending for 10 minutes is worth highlighting. Store the thresholds in config, not as magic numbers in the component.
+
 ## CSS modules, when Tailwind is the wrong weight
 
 A restrained product (a treasury portal, a card program) can use CSS modules and custom properties instead of a utility framework. The constraint is the token list, not class discipline.

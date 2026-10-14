@@ -60,9 +60,12 @@ These are jobs, not products. Pick the row that matches what you are shipping.
 | [CSF and GSF](guide/csf-gsf.md) | Funds-flow diagrams and relationship graphs |
 | [Security](guide/security.md) | Secrets, sessions, custody, log redaction |
 | [Testing](guide/testing.md) | What “done” means before you ship |
+| [Durable Objects](guide/durable-objects.md) | Cross-cutting DO patterns: alarms, nonces, deposit detection, WebSocket hubs |
+| [Sync engine](guide/sync-engine.md) | Backfill, catch-up cursors, balance discovery, idempotent aggregation |
 | [Design](guide/design-style.md) | Two visual systems that have shipped |
 | [AI agents](guide/ai-agents.md) | `brain.md`, `AGENTS.md`, and how agents should use this playbook |
 | [Lessons](lessons/README.md) | Field notes by architecture |
+| [Skills](skills/README.md) | Installable agent skills: architecture routing, Cloudflare patterns, scaffolding, security review |
 
 Procedural API reference lives in the [Brale Agent Kit](https://github.com/superduperdot/brale-agent-kit). This playbook tells you which pattern to apply. It does not duplicate that TypeScript.
 
@@ -70,14 +73,15 @@ Procedural API reference lives in the [Brale Agent Kit](https://github.com/super
 
 | Reference | Location | Last verified |
 |-----------|----------|---------------|
-| Brale API docs index | [docs.brale.xyz/llms.txt](https://docs.brale.xyz/llms.txt) | 2026-10-05 |
-| Value types (enums) | [docs.brale.xyz/coverage/value-types](https://docs.brale.xyz/coverage/value-types.md) | 2026-10-05 |
-| Transfer types (enums) | [docs.brale.xyz/coverage/transfer-types](https://docs.brale.xyz/coverage/transfer-types.md) | 2026-10-05 |
+| Brale API docs index | [docs.brale.xyz/llms.txt](https://docs.brale.xyz/llms.txt) | 2026-10-14 |
+| Value types (enums) | [docs.brale.xyz/coverage/value-types](https://docs.brale.xyz/coverage/value-types.md) | 2026-10-14 |
+| Transfer types (enums) | [docs.brale.xyz/coverage/transfer-types](https://docs.brale.xyz/coverage/transfer-types.md) | 2026-10-14 |
 | The Value Layer (design basis for `value_type`/`transfer_type`) | [benmilne.com/book/the-value-layer](https://benmilne.com/book/the-value-layer) | 2026-10-05 |
 | Brale Agent Kit | [superduperdot/brale-agent-kit](https://github.com/superduperdot/brale-agent-kit) | 2026-10-05 |
 | CSF spec | [Brale-xyz/commons/csf.json](https://github.com/Brale-xyz/commons/blob/main/Commons%20Stablecoin%20Format/csf.json) | 2026-06-24 |
 | GSF spec | [benmilne-com/standards/gsf-0.5.2.json](https://github.com/benmilne-com/standards/blob/main/gsf/gsf-0.5.2.json) | 2026-06-24 |
-| Brale OpenAPI | [api.brale.xyz/openapi](https://api.brale.xyz/openapi) | 2026-06-24 |
+| Brale OpenAPI | [api.brale.xyz/openapi](https://api.brale.xyz/openapi) | 2026-10-14 |
+| Brale Network API (registry) | [brale.network/api/openapi.json](https://brale.network/api/openapi.json) | 2026-10-14 |
 
 Verify these before you treat an endpoint shape as current.
 

@@ -11,8 +11,10 @@ You are building an application on the Brale API. Follow the Brale Playbook. Do 
 1. `guide/concepts.md` — choose the architecture that matches the table below. Read only that section’s “read next” links.
 2. `guide/naming-conventions.md` — names are already decided. Do not rename them.
 3. `guide/getting-started.md` — scaffold and the first-integration runbook.
-4. The Brale Agent Kit `AGENTS.md` (https://github.com/superduperdot/brale-agent-kit/blob/main/AGENTS.md) if the app calls `api.brale.xyz`.
-5. The lesson file named in the table.
+4. `guide/durable-objects.md` — if the architecture uses Cloudflare Workers or Durable Objects.
+5. `guide/sync-engine.md` — if the architecture calls `api.brale.xyz` (backfill, webhooks, balance discovery).
+6. The Brale Agent Kit `AGENTS.md` (https://github.com/superduperdot/brale-agent-kit/blob/main/AGENTS.md) if the app calls `api.brale.xyz`.
+7. The lesson file named in the table.
 
 ## Decisions (already made)
 

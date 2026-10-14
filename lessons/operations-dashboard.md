@@ -49,3 +49,8 @@ Field notes for a self-hosted dashboard over Brale. Architecture: [concepts.md](
 
 - **Do this instead:** Append-only audit log for API calls and user actions, formatted with Value Layer labels. Run every entry through the same log redaction so request/response bodies do not turn the audit table into a PII or secrets store.
 - **Guide:** [Value Layer](../guide/value-layer.md), [Security](../guide/security.md)
+
+### Reconciler generated a new idempotency key per retry
+- **What happened:** The reconciler called createTransfer with `Idempotency-Key: crypto.randomUUID()` on each attempt. Retries created duplicate transfers instead of replaying.
+- **Do this instead:** Store the idempotency key with the intent row when you first create it. Pass that same key on every retry.
+- **Guide:** [Brale API — idempotency](../guide/brale-api.md), [Sync engine](../guide/sync-engine.md)

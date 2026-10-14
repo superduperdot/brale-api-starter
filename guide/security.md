@@ -46,9 +46,36 @@ In a browser extension:
 - Keep the KDF salt stable across re-seals.
 - Privileged messages come from extension pages only. The dapp origin is `sender.origin`.
 
+### Extension message-bus hardening
+
+- Typed routes: define which messages each context (popup, background, content script) can send and receive.
+- Require a unique `id` and a `timestamp` on every message. Reject if age > 30 seconds or clock skew < −5 seconds.
+- Call `chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })` at service-worker boot to prevent content scripts from reading session storage.
+
 Argon2id via `hash-wasm` needs `wasm-unsafe-eval` in a Manifest V3 content-security policy. If it is missing, wallet creation fails with no useful error. Cover that with an end-to-end test against the built extension.
 
 An agent library exposes `destroy()` that zero-fills and then makes later calls throw. A policy check (caps, allowlists) and an audit record run before every send.
+
+### KDF and symmetric encryption reference
+
+A set of parameters that has shipped:
+
+| Primitive | Parameters |
+|-----------|------------|
+| **Password vault** | Argon2id: `memoryCost: 65536` (64 MiB), `timeCost: 3`, `parallelism: 4`, `hashLength: 32` via `hash-wasm`. 32-byte random salt. AES-256-GCM with a 12-byte IV, `tagLength: 128`. |
+| **Alternate (no WASM)** | PBKDF2-SHA256, ~600,000 iterations, 16-byte salt, AES-256-GCM. Less resistant to GPU attacks. |
+| **Passkey PRF** | HKDF-SHA256 with `info = '<app>-vault-v1'`, 32-byte output, feeding AES-256-GCM. |
+
+Copy bytes into a fresh `ArrayBuffer` before passing to `crypto.subtle.importKey` / `encrypt` / `decrypt`. TypeScript 5.7+ narrows `Uint8Array<ArrayBufferLike>` so a subarray is not assignable to `BufferSource` — the runtime is fine; the types are stricter.
+
+### Deployment-pinned encryption
+
+Combine a Worker `ENCRYPTION_KEY` (from `wrangler secret put`) with the user's passphrase via PBKDF2 or HKDF. D1 ciphertext alone is then insufficient to decrypt — the secret is split between the database and the deployment.
+
+### Request-origin and internal-route controls
+
+- **Same-origin mutation check:** Non-GET/OPTIONS requests whose `Origin` header does not match the request URL → 403. This prevents cross-origin state changes without relying solely on CORS.
+- **Internal routes** (`/internal/poll`, `/internal/catch-up`): require a dedicated shared secret in `X-Internal-Secret`, compared in constant time. Do not reuse the user session for machine-to-machine calls. Prefer a service binding between your own Workers — a binding is not publicly routable.
 
 ## Log redaction
 
@@ -117,6 +144,7 @@ Commercial screening datasets have their own licenses. Check the license before 
 - [ ] Session revocation tested
 - [ ] Log line for a KYB-shaped payload (and a card PAN/CVV, if you issue cards) contains `[REDACTED]` and not the value
 - [ ] Audit-log entries are redacted the same way as logs
+- [ ] Email-code (or OTP) code stored as a hash, not plaintext (a real deployment stored raw codes and relied on send-rate-limiting alone — the verify endpoint was unguarded)
 - [ ] Security headers present on a production response
 - [ ] OWASP-oriented tests for auth, CSRF where cookies exist, rate limits, and webhook integrity
 

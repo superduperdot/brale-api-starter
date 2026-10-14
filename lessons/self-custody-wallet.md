@@ -42,3 +42,23 @@ Field notes for a browser extension where the person holds the keys. Architectur
 
 - **Do this instead:** Build explorer links from the chain's `explorer_url` in `brale.network/api/transfer-type/:id` plus the tx hash. Do not hardcode explorer domains per chain.
 - **Guide:** [Brale API — read surfaces](../guide/brale-api.md)
+
+### Indexed wallet history treated as authoritative balance
+- **What happened:** A fallback balance was computed by summing amounts from an indexed `/wallet/{chain}/{address}` transaction-history endpoint. The sums drifted from actual on-chain balances.
+- **Do this instead:** Treat indexed history as transaction history only, not as an authoritative balance. Read balances from chain RPC. Use the history for activity feeds and to seed the balance-discovery set, not as a balance source. (This endpoint is observed in production but not documented in any public OpenAPI spec.)
+- **Guide:** [Brale API — read surfaces](../guide/brale-api.md)
+
+### Side panel vs popup is a runtime decision
+- **What happened:** The extension shipped with a popup only. Users on wide monitors wanted the extension docked.
+- **Do this instead:** Default to `chrome.sidePanel` (Chrome 114+); set `openPanelOnActionClick: true`. Store the preference. Same React app detects panel mode.
+- **Guide:** [Design](../guide/design-style.md)
+
+### WebAuthn cannot run in a service worker
+- **What happened:** The passkey PRF flow was called from the background service worker. It threw — `navigator.credentials` is not available in a SW context.
+- **Do this instead:** Run WebAuthn / PRF in a popup or full-page tab. Proxy results back to the background via messages.
+- **Guide:** [Security](../guide/security.md)
+
+### Pending signing request lost on service-worker kill
+- **What happened:** An in-memory promise map for pending dapp approval requests was lost when the MV3 service worker was killed.
+- **Do this instead:** Persist pending requests in `chrome.storage.session`. Auto-reject after 5 minutes. Use `chrome.alarms` keepalive while an approval popup is open.
+- **Guide:** [Security](../guide/security.md)

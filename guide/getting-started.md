@@ -27,7 +27,7 @@ Copy from [templates/](../templates/):
 | `AGENTS.md` | Commands, guardrails, and when to update this playbook |
 | `architecture.md` | Runtime and file index |
 
-Paste [templates/SEED-PROMPT.md](../templates/SEED-PROMPT.md) into the agent session that bootstraps the repo.
+Paste [templates/SEED-PROMPT.md](../templates/SEED-PROMPT.md) into the agent session that bootstraps the repo. Alternatively, install the packaged skills (`./skills/install.sh`) so the agent can apply architecture routing, Cloudflare patterns, scaffolding, and security review without pasting the full prompt. See [skills/README.md](../skills/README.md).
 
 ## 4. First integration runbook
 
@@ -87,5 +87,8 @@ Use these unless the architecture says otherwise.
 
 - [concepts.md](concepts.md) — the seven architectures
 - [naming-conventions.md](naming-conventions.md)
+- [durable-objects.md](durable-objects.md) — cross-cutting DO patterns
+- [sync-engine.md](sync-engine.md) — backfill, cursors, balance discovery
 - [ai-agents.md](ai-agents.md) — how agents should use this playbook
 - [../templates/SEED-PROMPT.md](../templates/SEED-PROMPT.md)
+- [../skills/README.md](../skills/README.md) — installable agent skills

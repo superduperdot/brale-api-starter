@@ -53,3 +53,13 @@ Field notes for screening and investigation. Architecture: [concepts.md](../guid
 
 - **Do this instead:** Import production-shaped transfers for walkthroughs. Do not use live customer data as the demo set.
 - **Guide:** [Testing](../guide/testing.md)
+
+### Rate limit in KV lost state on propagation delay
+- **What happened:** A per-API-key rate limiter stored counters in KV. Concurrent requests from different PoPs saw stale counts and exceeded the limit.
+- **Do this instead:** Use a Durable Object per key for rate limits. D1 works for auth attempt counters (where stale fails closed). KV is fine for the registry cache (~1-hour TTL).
+- **Guide:** [Durable Objects](../guide/durable-objects.md), [Cloudflare — KV](../guide/cloudflare-stack.md)
+
+### Registry cache assumed flat value-type list
+- **What happened:** The parser treated the registry response as a flat array of value-type ids. The actual shape includes a `deployments` object mapping per-network contract addresses.
+- **Do this instead:** Parse the `deployments` map to get contract addresses per chain. Map vendor `{network, asset}` pairs onto `{transferType, valueType}` using both `transfer_types[]` and `contract_addresses`.
+- **Guide:** [Brale API — read surfaces](../guide/brale-api.md)

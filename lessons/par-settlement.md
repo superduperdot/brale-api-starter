@@ -51,3 +51,23 @@ Field notes for moving Brale-issued stablecoins across chains at par. Architectu
 
 - **Do this instead:** Poll. HTTP for EVM read-your-writes, and Solana `getSignatureStatuses` with `searchTransactionHistory: true`.
 - **Guide:** [Cloudflare](../guide/cloudflare-stack.md)
+
+### Nonce out of sync after manual send
+- **What happened:** An out-of-band send from a hot wallet made the stored nonce counter stale. The next automated fill got "nonce too low."
+- **Do this instead:** Reconcile: `nonce = max(stored, getTransactionCount({blockTag: 'pending'}))` inside `blockConcurrencyWhile`. One sender DO per wallet.
+- **Guide:** [Durable Objects](../guide/durable-objects.md)
+
+### getLogs cursor skipped orders
+- **What happened:** The getLogs block-range cursor advanced past a range before all discovered orders were persisted. A crash mid-scan orphaned intents.
+- **Do this instead:** Enroll pending orders in DO storage (`p:${orderId}`) before advancing `cursorBlock`. Cap the block range per poll (e.g. 9 blocks).
+- **Guide:** [Durable Objects](../guide/durable-objects.md)
+
+### On-chain confirm did not mean credited balance
+- **What happened:** After an on-chain deposit confirmed, the code immediately called Brale convert. The custodial balance was still zero — crediting lag (~15–20 seconds observed).
+- **Do this instead:** After on-chain confirmation, poll the Brale custodial balance API until it reflects the deposit, then convert.
+- **Guide:** [Brale API — balances](../guide/brale-api.md)
+
+### Refund sent to wrong order
+- **What happened:** A refund was issued against stale order JSON without re-verifying the orderId on-chain.
+- **Do this instead:** Recompute `orderId(order)` on-chain before calling `refund()`. On mismatch → mark `error`, refuse the transaction.
+- **Guide:** [Architectures — par settlement](../guide/concepts.md#par-settlement)

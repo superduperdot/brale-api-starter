@@ -47,6 +47,10 @@ Not every value type runs on every transfer type. USDC is on ~10 chains; USDT is
 
 `amount.currency` is an ISO-4217 code (usually `USD`), and it is **separate from `value_type`** — a USD-denominated stablecoin moves with `currency: "USD"`, while a `MXNe` leg is denominated in MXN. `amount.value` is a decimal string. `address_id` is omitted on a leg only when Brale returns deposit instructions for funding (for example a wire onramp source).
 
+### Transfer status
+
+The canonical status enum on a transfer is `pending`, `processing`, `complete`, `canceled`, `failed`, `compliance review`. The webhook event name uses the past tense (`transfer.completed`, `transfer.canceled`); the API status field uses the adjective (`complete`, `canceled`). Accept both `complete` and `completed` when reading status. Handle `processing` (in-flight) and `compliance review` (held for review) without treating them as errors.
+
 ## Two audiences, two word lists
 
 Pick one and apply it everywhere in that product. Mixing them is how “swap” sneaks back into a screen that was supposed to be precise.

@@ -39,6 +39,13 @@ Split when one of these is true:
 - A queue consumer on the same Worker as the live API has already caused latency spikes. Keep scoring and ingest off the request Worker.
 - Roles have different trust boundaries (a solver that signs, a UI that does not). Use service bindings rather than public HTTP between your own Workers.
 
+### Multi-worker deploy
+
+- Set `workers_dev = false` on internal Workers that should not be reachable on `*.workers.dev`. Expose them only via a gateway Worker using service bindings.
+- Runtime hostname gate: the gateway Worker rejects requests whose hostname is not the canonical production host (return 403).
+- Resource-name prefixing: on a shared account, prefix all Workers, D1 databases, queues, and KV namespaces with a consistent slug (e.g. `nx-`) to avoid collisions.
+- Preflight script: a deploy-time check (`scripts/preflight-check.ts`) that refuses a production deploy unless required env flags are set (e.g. `ENFORCE_VALID_UNTIL`, threshold quorum >= 3).
+
 Poll chain confirmation with HTTP. Do not hold a websocket subscription to a public RPC inside a Worker.
 
 ## D1
@@ -60,7 +67,7 @@ Do not put high-throughput fan-out on a Durable Object. That is a queue, or it i
 
 ### Deposit-first transfers
 
-When a transfer starts with a user deposit to a Brale address, a Durable Object per transfer owns the lifecycle: detect the deposit via alarm-driven balance polling, post the Brale transfer, and handle the terminal webhook. The alarm is the primary deposit-detection mechanism — Brale does not webhook on-chain deposits (see [brale-api.md](brale-api.md#pitfalls)). Write the idempotency key to DO storage before the `POST /transfers` call so a crash mid-flight retries safely. The webhook wakes the DO, but the DO reads Brale to confirm before transitioning. The alarm is the safety net if the webhook never arrives.
+When a transfer starts with a user deposit to a Brale address, a Durable Object per transfer owns the lifecycle: detect the deposit via alarm-driven balance polling, post the Brale transfer, and handle the terminal webhook. Brale webhooks cover all API-originated transfers (mint = transfer = webhook) and fiat inbound (`payment.completed`). The alarm is the primary detection path only for **unsolicited arrivals of already-minted, Brale-listed stablecoins** — tokens Brale didn't originate (see [brale-api.md](brale-api.md#pitfalls) and [durable-objects.md](durable-objects.md#deposit-first-transfers)). Write the idempotency key to DO storage before the `POST /transfers` call so a crash mid-flight retries safely. The webhook wakes the DO, but the DO reads Brale to confirm before transitioning. The alarm is the safety net if the webhook never arrives.
 
 ## Alarms and cron
 
@@ -80,6 +87,8 @@ Eventually consistent. Good for a registry cache (about a 1 hour TTL), a kill sw
 
 Bad for sessions, membership, and anything where a stale “allowed” is a security bug. Those rows go in D1.
 
+A kill switch can live in KV for the polling/fill loop. But when the UI or a readiness gate must see the kill state reliably, also write it to D1. KV alone is eventually consistent — the operator may not see the kill confirmed.
+
 ## R2
 
 Cold storage. Access-log archives, document blobs that are not KYB (KYB documents are transit-only — see [managed-accounts.md](managed-accounts.md)), ingest snapshots. Write asynchronously. Do not read R2 to render the primary screen.
@@ -92,6 +101,10 @@ Async pipelines with retries and a dead-letter table in D1. Three retries is a r
 
 `ctx.waitUntil()` has the same class of mistake. It is for work that can finish after the response (webhook ack, cache fill, a non-critical write). If the next state is “filled” or “settled”, await it. `waitUntil` is not a delivery guarantee.
 
+**Preflight:** verify delivery is not paused before relying on a queue. `send()` succeeds even when delivery is paused — the messages silently accumulate. Check queue health in the dashboard or via the API before treating a queue as live.
+
+**Exactly one consumer per queue.** Two Workers bound as consumers → last deploy wins; the other is silently disconnected. Prefer HTTP POST or service bindings for cross-worker coordination.
+
 ## Cache API
 
 Short TTL on analytics GETs (10–30 seconds) is enough to absorb dashboard refreshes. Store with `ctx.waitUntil(cache.put(...))`.
@@ -103,6 +116,8 @@ In Workers TypeScript, `caches.default` needs a cast. So does `Uint8Array` when 
 AES-GCM, PBKDF2, and HMAC-SHA256 are available. Node’s `crypto` module is not the thing to import.
 
 Ed25519 can go through Web Crypto. secp256k1 cannot; use `@noble` for that curve. Allowlist: `@noble/*`, `@scure/*`, `hash-wasm`, and Web Crypto. Leave `ethers` out.
+
+To be precise: Ed25519 sign/verify works through `crypto.subtle` on Workers (use it for validator/witness signatures). secp256k1 and EIP-712 typed data are not in SubtleCrypto — use `@noble/secp256k1` or `viem`.
 
 ## Hono + chanfana
 
@@ -191,6 +206,10 @@ curl -sS -X POST http://localhost:8788/webhooks/brale \
 
 Keep the signing logic in one place by reusing the kit's [reference/webhook-verify.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/webhook-verify.ts) (a small Node script that signs a fixture is enough). See [brale-api.md](brale-api.md#webhooks) for the verification contract and [security.md](security.md) for the constant-time compare.
 
+**Vite Cloudflare plugin:** set `persistState: true` so D1/KV/R2 state survives restarts in dev. Point `configPath` at the real `wrangler.jsonc`.
+
+**Split `tsconfig.worker.json` for DO/worker code.** Workers and Durable Object code live under a separate tsconfig that includes Cloudflare worker types. This avoids node/workers global collisions (e.g. `Request`, `Response` type conflicts).
+
 ## Gotchas
 
 | What breaks | Fix |
@@ -203,9 +222,34 @@ Keep the signing logic in one place by reusing the kit's [reference/webhook-veri
 | Frontend JSON parse error in dev | The Vite proxy target must be wrangler’s actual port (often `8788`, not `8787`). A wrong port returns an HTML error page. |
 | `caches.default` or Web Crypto types fail | Cast. The runtime is fine; the types are narrower than the runtime. |
 
+## Security headers and cache
+
+Set a fixed CSP bundle on all responses:
+
+```
+default-src 'self'; connect-src 'self' wss: ws:; font-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; script-src 'self'
+```
+
+Self-host fonts — a font CDN breaks `font-src 'self'`.
+
+**Per-route Cache API TTL map** for analytics:
+
+| Route pattern | TTL |
+|---------------|-----|
+| KPIs | ~10 s |
+| Balances | ~30 s |
+| Analytics | ~15 s |
+| Transfers | ~5 s |
+
+Set `Cache-Control: s-maxage={ttl}` and store with `ctx.waitUntil(cache.put(...))`.
+
+Financial responses get `cache-control: no-store`.
+
 ## Related
 
 - [concepts.md](concepts.md)
 - [brale-api.md](brale-api.md) — webhooks and the three-layer sync
 - [security.md](security.md)
 - [managed-accounts.md](managed-accounts.md)
+- [durable-objects.md](durable-objects.md)
+- [sync-engine.md](sync-engine.md)

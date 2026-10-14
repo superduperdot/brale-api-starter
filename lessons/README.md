@@ -33,3 +33,4 @@ Do not open a lesson file per product. If the note does not fit an existing arch
 - [Compliance monitoring](compliance.md)
 - [Managed treasury](managed-treasury.md)
 - [Balance reconciliation](balance-reconciliation.md)
+- [Cloudflare platform](cloudflare-platform.md)

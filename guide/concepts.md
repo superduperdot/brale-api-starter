@@ -23,13 +23,17 @@ A person holds their own keys and sends stablecoins. The app is a browser extens
 - On Solana, query both the classic token program and Token-2022. Some Brale-issued stables use Token-2022.
 - Build explorer links from the chain's `explorer_url` in `brale.network/api/transfer-type/:id` plus the tx hash.
 - Gate privileged messages to extension pages. Take the dapp origin from the browser sender, never from the page.
+- Ship with EOA sends first. Gasless smart accounts (ERC-4337) can come later — dapps assume an EOA.
+- Default to the side panel (Chrome 114+); toggle persists. See [durable-objects.md](durable-objects.md) only when the extension has a backend Worker.
+- Stale-while-revalidate balances: paint cached, refresh behind; skip refresh if last fetch < 30s.
+- On Solana, batch `getTokenAccountsByOwner` for both `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` and `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` (Token-2022) in one RPC call.
 
 **Skip this**
 
 - Gasless smart accounts before plain EOA sends work. Dapps often assume an EOA. Prove that path first.
 - Unit tests as the only check for content-security policy. A missing `wasm-unsafe-eval` directive has silently broken wallet creation when Argon2id runs through WebAssembly.
 
-**Read next:** [lessons/self-custody-wallet.md](../lessons/self-custody-wallet.md), [security.md](security.md), [brale-api.md](brale-api.md) (read APIs), [testing.md](testing.md)
+**Read next:** [lessons/self-custody-wallet.md](../lessons/self-custody-wallet.md), [security.md](security.md), [brale-api.md](brale-api.md) (read APIs), [testing.md](testing.md), [durable-objects.md](durable-objects.md)
 
 ## Agent wallet
 
@@ -42,6 +46,12 @@ A bot or agent sends stablecoins with no human approval popup. Ship it as a libr
 | **Control** | A policy engine in front of every send: per-send cap, session cap, allowlists. Write the audit log, then reject, before any network call. |
 
 Derive addresses with the same BIP-39 / BIP-44 / SLIP-0010 rules a self-custody wallet would use, so the same mnemonic yields the same addresses. The library can reimplement that crypto. It should not depend on an extension package.
+
+**Do this**
+
+- Policy engine config shape: `{ maxPerSend?, maxPerSession?, allowedRecipients?, allowedTokens?, allowedChains? }`. `check('send', params)` before any network call; `recordSpend` after success. Caps use decimal-string comparison, never `parseFloat`.
+- Audit log records happen before the network call, not after. On block: record then throw.
+- Pinned derivation test vectors: share them between the extension and the agent library so one mnemonic yields the same addresses.
 
 **Read next:** [lessons/agent-wallet.md](../lessons/agent-wallet.md), [brale-api.md](brale-api.md), [security.md](security.md)
 
@@ -64,8 +74,16 @@ Move Brale-issued stablecoins across chains at par. Liquidity is mint and burn, 
 - Put revenue rules in code. An unprofitable fill should throw, and CI should fail. Dashboards are not a control.
 - Publish capabilities (assets, chains, layers) from config. The UI must refuse an order the solver cannot fill before the user locks funds.
 - Use Queues for write-behind archives only. Using them to coordinate the fill path has dropped the large majority of messages.
+- Reconcile the nonce: `nonce = max(stored, getTransactionCount({blockTag: 'pending'}))` inside `blockConcurrencyWhile`. One sender DO per hot wallet; round-robin for parallelism. See [durable-objects.md](durable-objects.md).
+- Use two verifier DOs (primary/secondary RPC) and proceed only when fields match. A single RPC can lag or return stale state.
+- Cap `eth_getLogs` block range (e.g. 9 blocks). Advance the cursor only over scanned blocks — do not skip ahead on a backlog.
+- Enroll pending orders in DO storage (`p:${orderId}`) before advancing the `getLogs` cursor. A mid-scan crash cannot orphan intents.
+- Recompute `orderId(order)` on-chain before issuing a refund. A mismatch → mark `error`, refuse the transaction.
+- Set exposure caps in env vars (`MAX_FILL_NOTIONAL_USD`, `MAX_DAILY_NOTIONAL_USD`, `MIN_SENDER_WEI`). Back the daily cap with a D1 `sumNotionalSince` query.
+- After an on-chain deposit, poll the Brale custodial **balance** API before calling convert. On-chain confirmation does not mean the balance is credited — there is a crediting lag (~15–20 seconds observed).
+- Never use one global `decimals` constant across chains. The same token symbol can have different decimals per chain/VM.
 
-**Read next:** [lessons/par-settlement.md](../lessons/par-settlement.md), [cloudflare-stack.md](cloudflare-stack.md), [brale-api.md](brale-api.md), [testing.md](testing.md)
+**Read next:** [lessons/par-settlement.md](../lessons/par-settlement.md), [cloudflare-stack.md](cloudflare-stack.md), [brale-api.md](brale-api.md), [testing.md](testing.md), [durable-objects.md](durable-objects.md), [sync-engine.md](sync-engine.md)
 
 ## Analytics command center
 
@@ -85,8 +103,12 @@ A real-time view of one account’s transfers: KPIs, charts, and a live feed.
 - Return 200 from the webhook immediately, then do D1 work in `ctx.waitUntil()`.
 - Smart Placement so the Worker sits near D1.
 - Self-host fonts. A font CDN fights a strict content-security policy.
+- Use a Durable Object as the WebSocket hub. Other handlers POST to an internal `/broadcast` route. The alarm sends heartbeats and triggers a self-POST to the internal poll route. See [durable-objects.md](durable-objects.md).
+- Pre-compute `daily_stats` by re-selecting, not by `+=` increment. An idempotent recompute means a replayed webhook cannot corrupt charts. See [sync-engine.md](sync-engine.md).
+- Read `daily_stats` in chart queries, not raw transfers.
+- Use `page[after]` for sync pagination (not `page[next]`). See [sync-engine.md](sync-engine.md).
 
-**Read next:** [lessons/analytics.md](../lessons/analytics.md), [brale-api.md](brale-api.md), [cloudflare-stack.md](cloudflare-stack.md), [value-layer.md](value-layer.md)
+**Read next:** [lessons/analytics.md](../lessons/analytics.md), [brale-api.md](brale-api.md), [cloudflare-stack.md](cloudflare-stack.md), [value-layer.md](value-layer.md), [durable-objects.md](durable-objects.md), [sync-engine.md](sync-engine.md)
 
 ## Operations dashboard
 
@@ -101,7 +123,12 @@ A self-hosted dashboard for people who already have Brale API credentials: trans
 
 Pages read the database, not Brale, after the first sync. That is what makes the UI fast and what lets it work offline once synced.
 
-**Read next:** [lessons/operations-dashboard.md](../lessons/operations-dashboard.md), [brale-api.md](brale-api.md), [cloudflare-stack.md](cloudflare-stack.md), [design-style.md](design-style.md)
+**Do this**
+
+- The reconciler must reuse the stored idempotency key on retry. A fresh UUID per attempt creates duplicate transfers.
+- A transfer lifecycle Durable Object with alarm-based backoff can manage multi-step settle flows. See [durable-objects.md](durable-objects.md).
+
+**Read next:** [lessons/operations-dashboard.md](../lessons/operations-dashboard.md), [brale-api.md](brale-api.md), [cloudflare-stack.md](cloudflare-stack.md), [design-style.md](design-style.md), [durable-objects.md](durable-objects.md)
 
 ## Compliance monitoring
 
@@ -120,8 +147,10 @@ Screen transfers and investigate subjects. Throughput and request latency are di
 - Normalize EVM addresses to lowercase before sanctions matching. A case mismatch is a false negative.
 - Classify an exchange by what changed: value type only (swap), transfer type only (bridge), or both (cross-rail).
 - Keep auth state in D1 or a Durable Object. KV is eventually consistent.
+- Use a Durable Object per organization for screening state, a global DO (or small set) for scheduled re-screening via alarms, and one DO per API key for rate limits. Fan-out stays on Queues (or HTTP POST). See [durable-objects.md](durable-objects.md).
+- Cache the value-type/transfer-type registry map in KV with a ~1-hour TTL. The registry response includes a `deployments` object mapping per-network contract addresses.
 
-**Read next:** [lessons/compliance.md](../lessons/compliance.md), [cloudflare-stack.md](cloudflare-stack.md), [csf-gsf.md](csf-gsf.md), [value-layer.md](value-layer.md)
+**Read next:** [lessons/compliance.md](../lessons/compliance.md), [cloudflare-stack.md](cloudflare-stack.md), [csf-gsf.md](csf-gsf.md), [value-layer.md](value-layer.md), [durable-objects.md](durable-objects.md)
 
 ## Managed treasury
 
@@ -142,7 +171,14 @@ Onboard businesses onto Brale managed accounts, show one balance, and settle. Ca
 - Amounts are decimal strings. Public IDs are prefixed (`org_`, `tr_`, …). Provider IDs stay internal.
 - Bank users see “USDC on Base”, not the words ValueType and TransferType. Your API can say `currency` and `chain` and map inward.
 
-**Read next:** [managed-accounts.md](managed-accounts.md), [lessons/managed-treasury.md](../lessons/managed-treasury.md), [security.md](security.md), [cloudflare-stack.md](cloudflare-stack.md)
+**Do this**
+
+- Cap expensive poller work: `MAX_ACCOUNTS_PER_CYCLE` (e.g. 5 live + rotating testnet slice). Process live before testnet, stuck before healthy.
+- Deduplicate in-flight balance sweeps: skip if `transfers` has `status='settling'` and `note LIKE 'sweep:balance:…'`.
+- Store the preferred hold in a `platform_config` table per environment, not env vars.
+- The balance-sweep job iterates the address’s discovered value-type set (seeded from webhooks + on-chain history, per [sync-engine.md](sync-engine.md)), not the full registry cross-product.
+
+**Read next:** [managed-accounts.md](managed-accounts.md), [lessons/managed-treasury.md](../lessons/managed-treasury.md), [security.md](security.md), [cloudflare-stack.md](cloudflare-stack.md), [sync-engine.md](sync-engine.md)
 
 ## Choosing Cloudflare when you are between shapes
 

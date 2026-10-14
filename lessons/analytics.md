@@ -44,3 +44,23 @@ Field notes for a real-time view of an account. Architecture: [concepts.md](../g
 
 - **Do this instead:** A transfer may carry 0, 1, or 2 on-chain hashes. Cross-chain shows burn and mint. Fiat shows none.
 - **Guide:** [Value Layer](../guide/value-layer.md)
+
+### WebSocket hub trusted spoofable query identity
+- **What happened:** The WS hub received `email` and `name` as query params from the upgrade request without re-checking the session cookie on the Durable Object.
+- **Do this instead:** Gate the WS upgrade on a validated session token. The DO must verify identity, not trust query-param identity passed from the Worker.
+- **Guide:** [Durable Objects](../guide/durable-objects.md), [Security](../guide/security.md)
+
+### Pagination used page[next] instead of page[after]
+- **What happened:** The sync client passed the `pagination.next` cursor as `page[next]` in the query string. The API ignored it and returned the first page every time.
+- **Do this instead:** Pass the cursor as `page[after]`. The response `pagination` object returns `next`/`prev` values; the query params are `page[after]`/`page[before]`.
+- **Guide:** [Brale API](../guide/brale-api.md), [Sync engine](../guide/sync-engine.md)
+
+### Charts scanned raw transfers instead of daily_stats
+- **What happened:** A chart component queried every transfer row for the date range. Page loads took seconds.
+- **Do this instead:** Pre-compute `daily_stats` per (account, date, network). Recompute by re-selecting, not += increment. Read the aggregate, not the raw table.
+- **Guide:** [Sync engine](../guide/sync-engine.md)
+
+### Webhook secret was UTF-8-encoded instead of Base64URL-decoded
+- **What happened:** A webhook verification helper used `new TextEncoder().encode(sharedSecret)` as the HMAC key instead of Base64URL-decoding the secret. Every signature check failed.
+- **Do this instead:** Base64URL-decode the `sharedSecret` string to raw bytes, then use those bytes as the HMAC-SHA256 key. The encoding is Base64URL, not plain text.
+- **Guide:** [Brale API — webhooks](../guide/brale-api.md)

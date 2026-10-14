@@ -47,6 +47,30 @@ Getting test tokens — three documented patterns ([docs](https://docs.brale.xyz
 
 This "mint" is a standard transfer, not the tokenization mint/burn endpoints — those are a separate feature for tokenization (self-attested) accounts issuing their own token. Point your test suite at testnet rails and use the faucet mint in setup fixtures so tests start with a funded address.
 
+### Playwright on a built extension
+
+End-to-end tests for a browser extension should run against the **production build**, not the dev server.
+
+| Setting | Value |
+|---------|-------|
+| Extension path | `../extension/.output/chrome-mv3` (the built output) |
+| Workers | `workers: 1` (single-threaded) |
+| Mode | Headed (not headless — extensions need a visible browser) |
+| Context | `launchPersistentContext` (required for extensions) |
+| Extension ID | Derive from the service-worker URL after launch |
+| Content-script target | Start a local HTTP server (e.g. `python3 -m http.server 5599`) so content scripts match `http://localhost/*`, not `file://` |
+
+The wallet-creation test belongs here: a missing `wasm-unsafe-eval` CSP directive fails silently and unit tests never load the extension page.
+
+### Offline simulation gates
+
+For settlement or treasury products, add offline sim files (e.g. `convert.sim.ts`, `pnl.sim.ts`) that assert:
+- Idempotency: calling the same operation twice with the same key does not create a duplicate.
+- Terminal poll: the poller correctly identifies `complete`, `canceled`, `failed` as terminal.
+- Unprofitable fills throw (settlement) or unprofitable sweeps are skipped (treasury).
+
+Wire these as CI gates — they run without network or secrets.
+
 ## Mainnet
 
 “Works on mainnet” means you sent a small real amount and wrote down the transfer id, the rails, and the result in `brain.md`. Simulation is not that sentence.

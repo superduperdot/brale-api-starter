@@ -93,3 +93,28 @@ Field notes for business onboarding, a single preferred balance, and settlement.
 - **What happened:** JSON parsing failed because the Vite proxy targeted the wrong wrangler port and received an error page.
 - **Do this instead:** Match the proxy target to the port wrangler actually prints (often 8788, not 8787).
 - **Guide:** [Cloudflare — gotchas](../guide/cloudflare-stack.md)
+
+### Invite code consumed with status 'active' but code was 'pending'
+- **What happened:** The conditional UPDATE checked `WHERE status = 'active'` but the invite code's initial status was `pending`. Zero rows updated.
+- **Do this instead:** Match the actual initial status in your schema. If codes start as `pending`, consume with `WHERE status = 'pending'`.
+- **Guide:** [Cloudflare — invite-gated signup](../guide/cloudflare-stack.md)
+
+### Dual webhook secrets for test and live
+- **What happened:** A single webhook URL received events from both testnet and mainnet subscriptions. Verification failed on the live events because only the test secret was checked.
+- **Do this instead:** Try HMAC with the test secret, then the live secret. Set `verifiedEnvironment` for downstream Brale client selection.
+- **Guide:** [Managed accounts — webhooks](../guide/managed-accounts.md)
+
+### Wire instructions absent at KYB completion
+- **What happened:** After KYB passed and the automation was created, the funding instructions (bank coordinates) were not immediately present. The UI showed a blank.
+- **Do this instead:** Lazy-poll: on the funding-instructions route, list automations and cache the first one with `source.funding_instructions`. Do not assume they arrive with the automation create response.
+- **Guide:** [Managed accounts — automations](../guide/managed-accounts.md)
+
+### KYB document kinds were not validated
+- **What happened:** The upload form accepted any string as `document_kind`. Brale rejected unknown kinds with an unhelpful error.
+- **Do this instead:** Validate against the known set: `articles_of_incorporation`, `certificate_of_good_standing`, `ein_letter`, `government_photo_id`. Gate uploads behind `kyb_status === 'documents_required'`.
+- **Guide:** [Managed accounts — verification documents](../guide/managed-accounts.md)
+
+### Poller processed too many accounts per cycle
+- **What happened:** The 60-second cron iterated all organizations. With many accounts, balance reads and sweeps exhausted the subrequest budget.
+- **Do this instead:** Cap at `MAX_ACCOUNTS_PER_CYCLE` (e.g. 5 live + a rotating testnet slice). Process live before testnet, stuck before healthy. Defer non-critical work to the next cycle.
+- **Guide:** [Managed accounts — poller](../guide/managed-accounts.md)
