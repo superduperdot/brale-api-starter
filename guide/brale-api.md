@@ -118,10 +118,26 @@ Subscribe with the webhook subscription API under an account. Verify HMAC-SHA256
 | Secret scope | Each subscription has its own `sharedSecret`. Verify a delivery with the secret of the subscription that delivered it. **Do not** look the secret up by `data.account_id` — one managing-account subscription signs events for its managed accounts too. |
 | Storage | The `sharedSecret` is returned **once**, at creation. Store it immediately, encrypted. |
 | Compare | Constant time. |
-| Handler | Deduplicate by event id. For analytics or idempotent writes (`INSERT OR IGNORE`), return `200` and process in `ctx.waitUntil()`. For transfer state transitions — confirming funds, posting a transfer, closing an order — await the write before returning `200`. |
+| Handler | See the handler skeleton below. |
 | Scopes | The application needs webhook read and write permissions. |
 
 Reference: [reference/webhook-verify.ts](https://github.com/superduperdot/brale-agent-kit/blob/main/reference/webhook-verify.ts).
+
+### Handler skeleton
+
+The handler flow that has held up in production:
+
+| Step | What | Why |
+|------|------|-----|
+| 1. Verify | HMAC-SHA256 over the raw body (see table above) | Reject forgeries |
+| 2. Dedupe | `INSERT OR IGNORE` on `event.id` into D1. Return `200` on zero rows changed. | Idempotent at the event level. Deduplicate on the envelope `event.id`, not `data.id`. |
+| 3. Re-read | `GET /transfers/{id}` using the `data.id` from the payload | The webhook payload can be partial or stale — the GET is the source of truth. It also carries `transaction_id` (the on-chain tx hash) that the webhook body may omit. |
+| 4. Guard | Only act when the GET returns status `complete` (or `completed`). Return `200` and stop if still `pending` or `processing`. | A webhook can arrive before the transfer is terminal. |
+| 5. Act | Write the state change to your database. For transfer state transitions, **await** this write before returning `200`. | `ctx.waitUntil` is not delivery — see [Queues](cloudflare-stack.md). |
+
+For idempotent analytics writes (`INSERT OR IGNORE` into a stats table), step 5 can go in `ctx.waitUntil`. For anything that moves money or changes state — confirming funds, posting a transfer, closing an order — await it.
+
+Step 3 is the one most integrations skip. Without it you are acting on whatever the webhook carried, which may not reflect the transfer's current state. The re-read costs one API call per event and eliminates a class of race conditions.
 
 ### Webhook subscription management
 

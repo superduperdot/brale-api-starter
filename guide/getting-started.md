@@ -54,7 +54,10 @@ Reference implementation: [brale-agent-kit/reference/auth.ts](https://github.com
 - [ ] Read the raw body, then verify HMAC-SHA256. Header: `x-request-signature-sha-256`.
 - [ ] Base64URL-decode `sharedSecret`. Do not HMAC the encoded string. It is shown once.
 - [ ] Compare in constant time. For transfer state transitions, await the write before returning `200`. `ctx.waitUntil()` is only safe for idempotent, non-critical writes ([details](brale-api.md#webhooks)).
+- [ ] Re-read the transfer from Brale (`GET /transfers/{id}`) before acting on state. The webhook payload can be stale. See the [handler skeleton](brale-api.md#handler-skeleton).
 - [ ] Add a poller. Webhook delivery is not a guarantee. 30–60 seconds is the range that has worked.
+
+`BRALE_WEBHOOK_SECRET` is not a deploy blocker. If your Worker has a cron that registers the subscription on first run, deploy without it. The cron creates the subscription and the `sharedSecret` is returned once. Grab it from the logs and set it with `wrangler secret put` after the first deploy.
 
 ### Before production
 
