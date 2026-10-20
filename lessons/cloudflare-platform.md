@@ -31,3 +31,9 @@ Field notes for Cloudflare Workers, D1, Durable Objects, and Queues across archi
 - **What happened:** Worker code imported a Node-typed module. `Request` and `Response` type collisions caused build failures.
 - **Do this instead:** Split `tsconfig.worker.json` for DO/Worker code. Only that subtree includes Cloudflare worker types.
 - **Guide:** [Cloudflare — local development](../guide/cloudflare-stack.md)
+
+### Custom domain failed across Cloudflare accounts
+
+- **What happened:** The Worker was in a personal account. The DNS zone was in the org account. `custom_domain: true` deployed the Worker successfully but failed to create the route — "No access to the specified resource." Manual CNAME records returned Error 1014 (CNAME Cross-User Banned). Cloudflare blocks cross-account proxied records at the edge.
+- **Do this instead:** Deploy the Worker to the same Cloudflare account that owns the DNS zone. If you cannot move it yet, create a proxied AAAA record pointing to `100::` on the zone and add a worker route via the API or the dashboard.
+- **Guide:** [Cloudflare — gotchas](../guide/cloudflare-stack.md#gotchas)

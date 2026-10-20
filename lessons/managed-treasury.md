@@ -118,3 +118,9 @@ Field notes for business onboarding, a single preferred balance, and settlement.
 - **What happened:** The 60-second cron iterated all organizations. With many accounts, balance reads and sweeps exhausted the subrequest budget.
 - **Do this instead:** Cap at `MAX_ACCOUNTS_PER_CYCLE` (e.g. 5 live + a rotating testnet slice). Process live before testnet, stuck before healthy. Defer non-critical work to the next cycle.
 - **Guide:** [Managed accounts — poller](../guide/managed-accounts.md)
+
+### Acted on webhook payload without re-reading Brale
+
+- **What happened:** The handler parsed the webhook body and credited the transfer directly. A race caused a transfer to be credited while Brale still reported it as `processing`.
+- **Do this instead:** `INSERT OR IGNORE` the event for dedup, then `GET` the full transfer from Brale. Only act when status is `complete`/`completed`. The GET is the source of truth.
+- **Guide:** [Brale API — handler skeleton](../guide/brale-api.md#handler-skeleton)

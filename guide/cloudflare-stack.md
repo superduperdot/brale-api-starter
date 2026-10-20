@@ -221,6 +221,7 @@ Keep the signing logic in one place by reusing the kit's [reference/webhook-veri
 | Chain confirmation never arrives | HTTP poll. Do not subscribe. |
 | Frontend JSON parse error in dev | The Vite proxy target must be wrangler’s actual port (often `8788`, not `8787`). A wrong port returns an HTML error page. |
 | `caches.default` or Web Crypto types fail | Cast. The runtime is fine; the types are narrower than the runtime. |
+| `custom_domain: true` fails with "No access to the specified resource" | The Worker and the DNS zone are in different Cloudflare accounts. Move the Worker to the account that owns the zone, or create a proxied AAAA record (`100::`) and add a worker route instead. |
 
 ## Security headers and cache
 
